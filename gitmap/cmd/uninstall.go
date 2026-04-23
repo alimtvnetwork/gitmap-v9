@@ -102,6 +102,35 @@ func confirmUninstall(tool string) bool {
 	return input == "y" || input == "yes"
 }
 
+// hasPositionalToolArg reports whether args contain at least one
+// non-flag, non-flag-value token. Used to decide between the third-party
+// tool uninstaller and the self-uninstall shortcut.
+//
+// Boolean flags supported by `uninstall` (--dry-run, --force, --purge)
+// never consume a value, so the simple "starts with -" check is enough.
+// Self-uninstall passthrough flags (--confirm, --keep-data, --keep-snippet,
+// --shell-mode <v>) include one value-taking flag — we treat the value
+// as a positional only if it does not look like a flag itself.
+func hasPositionalToolArg(args []string) bool {
+	skipNext := false
+	for _, a := range args {
+		if skipNext {
+			skipNext = false
+			continue
+		}
+		if isFlagToken(a) {
+			if a == "--shell-mode" || a == "-shell-mode" {
+				skipNext = true
+			}
+			continue
+		}
+
+		return true
+	}
+
+	return false
+}
+
 // resolveUninstallManager determines which manager was used to install.
 func resolveUninstallManager(db *store.DB, tool string) string {
 	if db == nil {
