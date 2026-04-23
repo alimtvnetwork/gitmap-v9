@@ -12,8 +12,23 @@ import (
 )
 
 // runUninstall handles the "uninstall" command.
+//
+// Two modes, dispatched by whether a positional tool name is present:
+//
+//  1. `gitmap uninstall <tool> [flags]` — third-party tool uninstaller
+//     (vscode, npp, …). The original behavior.
+//  2. `gitmap uninstall [flags]` (no tool) — shortcut that hands off to
+//     `gitmap self-uninstall`. Flags pass through verbatim, so e.g.
+//     `gitmap uninstall --confirm --keep-data` works the same as
+//     `gitmap self-uninstall --confirm --keep-data`.
 func runUninstall(args []string) {
 	checkHelp("uninstall", args)
+
+	if !hasPositionalToolArg(args) {
+		runSelfUninstall(args)
+
+		return
+	}
 
 	fs := flag.NewFlagSet("uninstall", flag.ExitOnError)
 
@@ -26,8 +41,10 @@ func runUninstall(args []string) {
 
 	tool := fs.Arg(0)
 	if tool == "" {
-		fmt.Fprint(os.Stderr, constants.ErrInstallToolRequired)
-		os.Exit(1)
+		// Defensive — hasPositionalToolArg already filtered this case.
+		runSelfUninstall(args)
+
+		return
 	}
 
 	validateToolName(tool)
@@ -83,6 +100,35 @@ func confirmUninstall(tool string) bool {
 	input = strings.TrimSpace(strings.ToLower(input))
 
 	return input == "y" || input == "yes"
+}
+
+// hasPositionalToolArg reports whether args contain at least one
+// non-flag, non-flag-value token. Used to decide between the third-party
+// tool uninstaller and the self-uninstall shortcut.
+//
+// Boolean flags supported by `uninstall` (--dry-run, --force, --purge)
+// never consume a value, so the simple "starts with -" check is enough.
+// Self-uninstall passthrough flags (--confirm, --keep-data, --keep-snippet,
+// --shell-mode <v>) include one value-taking flag — we treat the value
+// as a positional only if it does not look like a flag itself.
+func hasPositionalToolArg(args []string) bool {
+	skipNext := false
+	for _, a := range args {
+		if skipNext {
+			skipNext = false
+			continue
+		}
+		if isFlagToken(a) {
+			if a == "--shell-mode" || a == "-shell-mode" {
+				skipNext = true
+			}
+			continue
+		}
+
+		return true
+	}
+
+	return false
 }
 
 // resolveUninstallManager determines which manager was used to install.
