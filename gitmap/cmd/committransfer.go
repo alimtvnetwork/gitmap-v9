@@ -102,23 +102,21 @@ func registerCommitTransferBools(fs *flag.FlagSet, opts *committransfer.Options)
 }
 
 // registerMessagePolicyToggles wires the on/off pairs for §6 stages.
-// Each negation is a Func that flips the field at parse time, so order
-// of flags on the command line is the order of effect (last wins).
+// Uses fs.BoolFunc (Go 1.21+) so negations don't consume a value.
+// Order on the command line is the order of effect (last wins).
 func registerMessagePolicyToggles(fs *flag.FlagSet, opts *committransfer.Options) {
-	fs.Func(constants.FlagCTConventional, constants.FlagDescCTConventional,
+	fs.BoolFunc(constants.FlagCTConventional, constants.FlagDescCTConventional,
 		func(string) error { opts.Message.Conventional = true; return nil })
-	fs.Func(constants.FlagCTNoConventional, constants.FlagDescCTNoConventional,
+	fs.BoolFunc(constants.FlagCTNoConventional, constants.FlagDescCTNoConventional,
 		func(string) error { opts.Message.Conventional = false; return nil })
-	fs.Func(constants.FlagCTProvenance, constants.FlagDescCTProvenance,
+	fs.BoolFunc(constants.FlagCTProvenance, constants.FlagDescCTProvenance,
 		func(string) error { opts.Message.Provenance = true; return nil })
-	fs.Func(constants.FlagCTNoProvenance, constants.FlagDescCTNoProvenance,
+	fs.BoolFunc(constants.FlagCTNoProvenance, constants.FlagDescCTNoProvenance,
 		func(string) error { opts.Message.Provenance = false; return nil })
 }
 
-// registerCommitTransferStrings wires the value-taking flags + repeatable
-// regex patterns. Also runs the negation-flag fixup post-parse via a
-// closure attached to a sentinel `--apply-negations` Func flag — this
-// avoids needing a second parse pass.
+// registerCommitTransferStrings wires value-taking flags + repeatable
+// regex patterns. --no-strip and --no-drop are BoolFunc (no value).
 func registerCommitTransferStrings(fs *flag.FlagSet, opts *committransfer.Options) {
 	fs.IntVar(&opts.Limit, constants.FlagCTLimit, 0, constants.FlagDescCTLimit)
 	fs.StringVar(&opts.Since, constants.FlagCTSince, "", constants.FlagDescCTSince)
@@ -132,8 +130,13 @@ func registerCommitTransferStrings(fs *flag.FlagSet, opts *committransfer.Option
 
 		return nil
 	})
-	fs.Func(constants.FlagCTNoStrip, constants.FlagDescCTNoStrip, func(string) error {
+	fs.BoolFunc(constants.FlagCTNoStrip, constants.FlagDescCTNoStrip, func(string) error {
 		opts.Message.StripPatterns = nil
+
+		return nil
+	})
+	fs.BoolFunc(constants.FlagCTNoDrop, constants.FlagDescCTNoDrop, func(string) error {
+		opts.Message.DropPatterns = nil
 
 		return nil
 	})
