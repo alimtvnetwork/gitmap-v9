@@ -182,6 +182,7 @@ func topLevelCmds() map[string]string {
 		"CmdUnzipCompact":             CmdUnzipCompact,
 		"CmdUnzipCompactAlias":        CmdUnzipCompactAlias,
 		"CmdZip":                      CmdZip,
+		"CmdReinstall":                CmdReinstall,
 	}
 }
 
