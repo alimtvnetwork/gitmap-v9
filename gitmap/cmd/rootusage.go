@@ -28,6 +28,7 @@ func printUsage() {
 	printGroupEnvTools()
 	printGroupTasks()
 	printGroupVisualize()
+	printGroupCommitXfer()
 	printGroupUtilities()
 	fmt.Println()
 	printUsageFlagSections()
@@ -190,4 +191,16 @@ func printGroupVisualize() {
 	fmt.Println()
 	fmt.Println(constants.HelpGroupVisualize)
 	fmt.Println(constants.HelpDashboard)
+}
+
+// printGroupCommitXfer prints the commit-transfer family. Surfacing
+// these in `gitmap help` is the primary discovery path — without it
+// users have to read spec/01-app/106 or stumble into `help commit-right`
+// to learn the aliases (cml / cmr / cmb) even exist.
+func printGroupCommitXfer() {
+	fmt.Println()
+	fmt.Println(constants.HelpGroupCommitXfer)
+	fmt.Println(constants.HelpCommitRight)
+	fmt.Println(constants.HelpCommitLeft)
+	fmt.Println(constants.HelpCommitBoth)
 }

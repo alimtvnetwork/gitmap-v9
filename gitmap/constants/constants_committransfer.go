@@ -95,3 +95,13 @@ const (
 	MsgCTPushedFmt             = "%s pushed %d commits to %s\n"
 	MsgCTConfirmProceedFmt     = "%s proceed? [y/N] "
 )
+
+// Top-level help-listing lines. Surfaced by `gitmap help` under the
+// "Commit Transfer" group so users can discover the family + aliases
+// without already knowing it exists. Long-form name first, alias in
+// parens — matches the merge-* convention.
+const (
+	HelpCommitRight = "  commit-right (cmr)  Replay LEFT's commits onto RIGHT (cleaned, idempotent)  [LIVE]"
+	HelpCommitLeft  = "  commit-left  (cml)  Replay RIGHT's commits onto LEFT                       [scaffold]"
+	HelpCommitBoth  = "  commit-both  (cmb)  Bidirectional replay, interleaved by author date       [scaffold]"
+)
