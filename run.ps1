@@ -1566,6 +1566,51 @@ Show-Banner
 Get-DeployManifest
 $config = Load-Config
 
+# -- Uninstall / Reinstall handlers ----------------------------
+# -Uninstall  : delegate to ./uninstall-quick.ps1 -Yes and exit.
+# -Reinstall  : run the uninstall, then re-invoke this very script with
+#               NO arguments so the user gets a clean pull/build/deploy/setup.
+# Both flags short-circuit before pull/build so they never touch git.
+function Invoke-UninstallScript {
+    $uninstallScript = Join-Path $RepoRoot "uninstall-quick.ps1"
+    if (-not (Test-Path $uninstallScript)) {
+        Write-Fail "uninstall-quick.ps1 not found at $uninstallScript"
+        exit 1
+    }
+    Write-Step "uninstall" "Running uninstall-quick.ps1 -Yes"
+    $prevPref = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    & $uninstallScript -Yes
+    $uninstallExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevPref
+    if ($uninstallExit -ne 0) {
+        Write-Fail "uninstall-quick.ps1 exited with code $uninstallExit"
+        exit $uninstallExit
+    }
+    Write-Success "Uninstall complete"
+}
+
+if ($Uninstall) {
+    Invoke-UninstallScript
+    Write-Host ""
+    Write-Success "All done!"
+    Write-Host ""
+    exit 0
+}
+
+if ($Reinstall) {
+    Invoke-UninstallScript
+    Write-Host ""
+    Write-Step "reinstall" "Re-invoking run.ps1 with no arguments"
+    $selfPath = $MyInvocation.MyCommand.Path
+    $prevPref = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    & $selfPath
+    $reinstallExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevPref
+    exit $reinstallExit
+}
+
 if ($Test) {
     Write-Info "Test mode enabled (-t)"
     Resolve-Dependencies
