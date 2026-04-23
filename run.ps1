@@ -10,6 +10,8 @@
     .\run.ps1 -NoPull                            # skip git pull
     .\run.ps1 -ForcePull                         # discard local changes + pull (no prompt)
     .\run.ps1 -NoDeploy                          # skip deploy step
+    .\run.ps1 -Uninstall                         # run uninstall-quick.ps1 -Yes and exit
+    .\run.ps1 -Reinstall                         # uninstall, then re-run run.ps1 with no args
     .\run.ps1 -R scan                            # build + scan parent folder
     .\run.ps1 -R scan D:\repos                   # build + scan specific path
     .\run.ps1 -R scan D:\repos --mode ssh        # build + scan with flags
@@ -39,6 +41,8 @@ param(
     [switch]$R,
     [Alias("t")]
     [switch]$Test,
+    [switch]$Uninstall,
+    [switch]$Reinstall,
     [switch]$DebugRepoDetect,
     [switch]$Quiet,
     [Parameter(ValueFromRemainingArguments=$true)]
@@ -1561,6 +1565,51 @@ function Invoke-Tests {
 Show-Banner
 Get-DeployManifest
 $config = Load-Config
+
+# -- Uninstall / Reinstall handlers ----------------------------
+# -Uninstall  : delegate to ./uninstall-quick.ps1 -Yes and exit.
+# -Reinstall  : run the uninstall, then re-invoke this very script with
+#               NO arguments so the user gets a clean pull/build/deploy/setup.
+# Both flags short-circuit before pull/build so they never touch git.
+function Invoke-UninstallScript {
+    $uninstallScript = Join-Path $RepoRoot "uninstall-quick.ps1"
+    if (-not (Test-Path $uninstallScript)) {
+        Write-Fail "uninstall-quick.ps1 not found at $uninstallScript"
+        exit 1
+    }
+    Write-Step "uninstall" "Running uninstall-quick.ps1 -Yes"
+    $prevPref = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    & $uninstallScript -Yes
+    $uninstallExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevPref
+    if ($uninstallExit -ne 0) {
+        Write-Fail "uninstall-quick.ps1 exited with code $uninstallExit"
+        exit $uninstallExit
+    }
+    Write-Success "Uninstall complete"
+}
+
+if ($Uninstall) {
+    Invoke-UninstallScript
+    Write-Host ""
+    Write-Success "All done!"
+    Write-Host ""
+    exit 0
+}
+
+if ($Reinstall) {
+    Invoke-UninstallScript
+    Write-Host ""
+    Write-Step "reinstall" "Re-invoking run.ps1 with no arguments"
+    $selfPath = $MyInvocation.MyCommand.Path
+    $prevPref = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    & $selfPath
+    $reinstallExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevPref
+    exit $reinstallExit
+}
 
 if ($Test) {
     Write-Info "Test mode enabled (-t)"
