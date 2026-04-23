@@ -30,6 +30,7 @@
 param(
     [switch]$NoPull,
     [switch]$NoDeploy,
+    [switch]$NoSetup,
     [switch]$ForcePull,
     [string]$DeployPath = "",
     [Alias("d")]
@@ -1628,6 +1629,27 @@ if (-not $NoDeploy) {
     }
 } else {
     Write-Info "Skipping deploy (-NoDeploy)"
+}
+
+# -- Auto-run setup after deploy (DFD-10) ----------------------
+# After a successful deploy, invoke `gitmap setup` so completion,
+# cd-function, PATH snippet, and gitignore steps are applied without
+# requiring a second manual command. Skip with -NoSetup.
+if (-not $NoDeploy -and -not $NoSetup -and $deployedBinaryPath -and (Test-Path $deployedBinaryPath)) {
+    Write-Host ""
+    Write-Info "Running 'gitmap setup' automatically..."
+    $prevPref = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    & $deployedBinaryPath setup
+    $setupExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevPref
+    if ($setupExit -ne 0) {
+        Write-Warn "gitmap setup exited with code $setupExit"
+    } else {
+        Write-Success "Setup completed"
+    }
+} elseif ($NoSetup) {
+    Write-Info "Skipping setup (-NoSetup)"
 }
 
 $changelogBinaryPath = $binaryPath
