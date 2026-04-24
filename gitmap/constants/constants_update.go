@@ -49,16 +49,27 @@ const (
 const (
 	MsgUpdateActive        = "  → Active: %s\n  → Handoff: %s\n"
 	MsgUpdateCleanStart    = "\n  Cleaning up update artifacts..."
+	MsgUpdateCleanBinary   = "  → Cleanup binary: %s\n"
 	MsgUpdateCleanDelay    = "  → Waiting %dms for deploy handles to settle...\n"
 	MsgUpdateCleanDone     = "  ✓ Removed %d file(s)\n\n"
 	MsgUpdateCleanNone     = "  ✓ Nothing to clean up"
 	MsgUpdateTempRemoved   = "  → Removed temp copy: %s\n"
 	MsgUpdateOldRemoved    = "  → Removed backup: %s\n"
 	MsgUpdatePhase3Handoff = "\n  → Handing off cleanup to deployed binary: %s update-cleanup\n"
+	MsgUpdatePhase3Resolve = "  → Cleanup target resolved via: %s\n"
 	MsgUpdatePhase3Target  = "  → Cleanup target path: %s\n"
+	MsgUpdatePhase3Started = "  → Cleanup process started (pid=%d)\n"
 	UpdateRunnerLogStart   = "update-runner starting, repo=%s"
 	UpdateScriptLogExec    = "executing update script: %s"
 	UpdateScriptLogExit    = "update script exited: err=%v"
+	UpdatePhase3LogResolve = "update-cleanup target resolved via %s: %s"
+	UpdatePhase3LogStarted = "update-cleanup started pid=%d target=%s"
+	UpdatePhase3LogStartFail = "update-cleanup launch failed target=%s err=%v"
+	UpdatePhase3LogTargetMissing = "update-cleanup handoff skipped: deployed target could not be resolved"
+	UpdatePhase3LogInline = "update-cleanup running inline from deployed binary: %s"
+	UpdateCleanupLogStart = "update-cleanup starting: self=%s"
+	UpdateCleanupLogDone = "update-cleanup finished: removed=%d"
+	UpdateCleanupLogDelayInvalid = "update-cleanup ignored invalid delay value: %q"
 )
 
 // Update error messages.
@@ -70,7 +81,9 @@ const (
 	ErrUpdateCleanupConfigRead = "Error: could not read cleanup config at %s: %v (operation: read config, reason: cleanup path resolution unavailable)\n"
 	ErrUpdateCleanupGlob       = "Error: could not enumerate cleanup matches at %s: %v (operation: glob, reason: invalid cleanup pattern)\n"
 	ErrUpdateCleanupRemove     = "Error: could not remove cleanup artifact at %s: %v (operation: remove, reason: file may be locked or missing)\n"
-	ErrUpdatePhase3Handoff     = "Error: could not hand off update cleanup to deployed binary at %s: %v (operation: start cleanup handoff, reason: detached launch failed)\n"
+	ErrUpdateCleanDelayInvalid = "Error: ignored invalid update-cleanup delay value %q (operation: parse cleanup delay, reason: env must be a positive integer)\n"
+	ErrUpdatePhase3TargetMissing = "Error: could not resolve deployed binary for update-cleanup (operation: resolve cleanup handoff target, reason: no deployed binary path found)\n"
+	ErrUpdatePhase3Handoff     = "Error: could not run update cleanup via deployed binary at %s: %v (operation: launch cleanup handoff, reason: target start or execution failed)\n"
 )
 
 // Unix update messages.
