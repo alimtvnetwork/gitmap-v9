@@ -52,12 +52,17 @@ func executeCommitTransfer(spec commitTransferSpec, args []string) {
 
 // dispatchDirection routes to the right RunX function. LEFT/RIGHT
 // positional ordering matches the spec — `commit-left LEFT RIGHT`
-// writes commits onto LEFT (using RIGHT as source).
+// writes commits onto LEFT (using RIGHT as source). For commit-both,
+// --interleave switches to the author-date merged stream.
 func dispatchDirection(name, leftDir, rightDir string, opts committransfer.Options) error {
 	switch name {
 	case constants.CmdCommitLeft:
 		return committransfer.RunLeft(leftDir, rightDir, opts)
 	case constants.CmdCommitBoth:
+		if opts.Interleave {
+			return committransfer.RunBothInterleaved(leftDir, rightDir, opts)
+		}
+
 		return committransfer.RunBoth(leftDir, rightDir, opts)
 	default:
 		// commit-right (and any future direction defaulting to L→R).
@@ -124,6 +129,7 @@ func registerCommitTransferBools(fs *flag.FlagSet, opts *committransfer.Options)
 	fs.BoolVar(&opts.IncludeMerges, constants.FlagCTIncludeMerges, false, constants.FlagDescCTIncludeMerges)
 	fs.BoolVar(&opts.Mirror, constants.FlagCTMirror, false, constants.FlagDescCTMirror)
 	fs.BoolVar(&opts.ForceReplay, constants.FlagCTForceReplay, false, constants.FlagDescCTForceReplay)
+	fs.BoolVar(&opts.Interleave, constants.FlagCTInterleave, false, constants.FlagDescCTInterleave)
 	registerMessagePolicyToggles(fs, opts)
 }
 
