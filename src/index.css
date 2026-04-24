@@ -527,9 +527,10 @@
     position: relative;
     overflow: hidden;
     isolation: isolate;
-    transition: transform 0.3s ease, box-shadow 0.3s ease,
-                border-color 0.3s ease, background-color 0.3s ease,
-                color 0.3s ease, filter 0.3s ease;
+    transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.7s ease, background-color 0.7s ease,
+                color 0.7s ease, filter 0.7s ease;
   }
   .btn-slide::before {
     content: "";
@@ -543,7 +544,7 @@
       transparent 65%
     );
     transform: translateX(-110%);
-    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
     pointer-events: none;
     z-index: 0;
   }
