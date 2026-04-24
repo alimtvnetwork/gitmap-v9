@@ -1,5 +1,36 @@
 # Changelog
 
+## v3.86.0 — (2026-04-24) — `--debug-windows` for self-update cleanup handoff
+
+### Added
+
+- **`--debug-windows` flag on `gitmap update`** — opt-in diagnostics for the self-update Phase 2/Phase 3 handoff chain. Prints a `[debug-windows]` block on every relevant lifecycle event with the resolution source (`config` / `sibling` / `PATH`), resolved cleanup target path, target-exists check, child argv, key environment variables (`GITMAP_DEBUG_WINDOWS`, `GITMAP_UPDATE_CLEANUP_DELAY_MS`, `GITMAP_DEBUG_REPO_DETECT`, `GITMAP_REPORT_ERRORS`, `GITMAP_REPORT_ERRORS_FILE`, `PATH`, `GITMAP_DEPLOY_PATH`), self/parent PIDs, and the spawned child PID after a successful detached `Start()`.
+- **`GITMAP_DEBUG_WINDOWS=1` env bridge** — the flag is propagated across the handoff boundary via both argv (Phase 2 copy + Phase 3 cleanup child) and env, so the dump runs on both sides of the detached spawn even when argv inheritance is fragile (e.g. hidden Windows process attrs). Users can also flip the env manually to enable the dump on a single run without rebuilding.
+
+### Why
+
+Issues #09 and #10 in `.lovable/pending-issues/01-current-issues.md` covered the recurring "update appears to complete but cleanup ran on the wrong binary" loop on Windows. The earlier fixes added `→ Cleanup target resolved via:` / `→ Cleanup target path:` / `→ Cleanup process started (pid=…)` lines, but those only appear in the parent (Phase 3 dispatcher). When the child cleanup process itself misbehaved, users had no way to see *its* view of the world. `--debug-windows` closes that gap by printing the same structured dump from inside `update-cleanup` too.
+
+### Implementation
+
+- `gitmap/cmd/updatedebugwindows.go` (new) — dump helpers (`dumpDebugWindowsHeader`, `dumpDebugWindowsHandoff`, `dumpDebugWindowsChildPID`, `dumpDebugWindowsNote`, `dumpDebugWindowsFooter`, `isDebugWindowsRequested`).
+- `gitmap/cmd/updatehandoff_phase3.go` — header/footer wraps `scheduleDeployedCleanupHandoff`; handoff dump runs before `cmd.Start()`; child PID dump runs after; new `buildCleanupChildArgs` / `buildCleanupChildEnv` helpers forward the flag + env.
+- `gitmap/cmd/updatecleanup.go` — dump runs at the start of `runUpdateCleanup` so the deployed binary prints its own view of the env, self path, and parent PID.
+- `gitmap/cmd/update.go` — `launchHandoff` forwards `--debug-windows` and `GITMAP_DEBUG_WINDOWS=1` into the handoff copy and prints a Phase 2 dump line.
+- `gitmap/constants/constants_update.go` — `FlagDebugWindows`, `EnvDebugWindows`, `MsgDebugWin*` constants.
+- `gitmap/helptext/update.md` — flag table updated with full env-key list and behaviour notes.
+- `gitmap/constants/constants.go` — bumped `Version` to `3.86.0`.
+
+### Compatibility
+
+Pure addition. Without the flag (and without `GITMAP_DEBUG_WINDOWS=1`), behaviour is byte-identical to the previous release. The dump goes to stderr only, so existing stdout-capturing wrappers stay clean.
+
+### Usage
+
+    gitmap update --debug-windows
+    GITMAP_DEBUG_WINDOWS=1 gitmap update      # equivalent
+
+
 ## v3.53.0 — (2026-04-21) — `gitmap lfs-common`: one-shot Git LFS tracking for common binary types
 
 ### Added
