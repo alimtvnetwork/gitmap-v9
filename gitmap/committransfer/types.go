@@ -6,9 +6,9 @@
 //
 // Spec: spec/01-app/106-commit-left-right-both.md
 //
-// **Status (v3.76.0):** Phase 1 only — `commit-right` engine is live.
-// `commit-left` and `commit-both` remain scaffolded in cmd/committransfer.go
-// pending Phases 2 and 3.
+// **Status (v3.102.0):** all three directions live —
+// `commit-right` (Phase 1, v3.76.0), `commit-left` (Phase 2), and
+// `commit-both` (Phase 3) all run on the same Plan/Replay primitives.
 package committransfer
 
 import "time"
@@ -19,10 +19,11 @@ type Direction int
 const (
 	// DirRight replays LEFT → RIGHT (writes commits on RIGHT).
 	DirRight Direction = iota
-	// DirLeft replays RIGHT → LEFT (Phase 2, not yet wired).
+	// DirLeft replays RIGHT → LEFT (writes commits on LEFT).
 	DirLeft
-	// DirBoth replays in both directions, interleaved by author date
-	// (Phase 3, not yet wired).
+	// DirBoth replays in both directions sequentially: LEFT → RIGHT
+	// first, then RIGHT → LEFT. Each pass builds its own plan and
+	// shares the same Options (with a directional log-prefix suffix).
 	DirBoth
 )
 
