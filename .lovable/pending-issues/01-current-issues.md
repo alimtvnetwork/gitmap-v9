@@ -234,3 +234,29 @@
   3. Logger writes must never block or fail the caller; degrade silently on disk errors.
   4. Daily-named log files keep the file bounded without needing rotation logic.
 
+## 16 — `gitmap pending clear` to remove orphaned/illegal pending tasks (FIXED v3.88.0)
+- **Status**: Fixed in v3.88.0
+- **Reported**: Follow-up to #11/#12. Even after the defensive guards in `executeDirectClone` / `executeDirectCloneOne`, **pre-existing** rows from older crashes still blocked subsequent runs with `pending task already exists for Clone at <bad-path>`. There was no surgical way to drop one row — only nuking the SQLite file or running raw SQL.
+- **Root Cause**: The clone pipeline records a pending task before it begins. A crash mid-clone (file-lock, broken FS path, OS reboot) can leave the DB pointing at a target that no longer makes sense (or never made sense, e.g. a URL accidentally treated as a folder name). `runPending` could only **list** rows, and `do-pending` would just retry them — neither could selectively delete.
+- **Solution**:
+  1. New subcommand `gitmap pending clear [<mode>|<id>] [--dry-run] [--yes|-y]` dispatched from `runPending` when `os.Args[2] == "clear"`.
+  2. Modes: `orphans` (default) drops rows whose `TargetPath` is missing on disk; `illegal` drops URL-shaped or Windows-illegal-char targets; `all` drops everything; `<id>` drops one row.
+  3. Three classifiers in `pendingclear.go`:
+     - `isURLShapedTarget`: matches `://` anywhere, or any of `http:`, `https:`, `ssh:`, `git:` followed by `\` or `/`. Catches the exact corruption pattern from issue #11 (`https:\github.com\...`).
+     - `hasIllegalPathChar`: scans for `:` after the drive letter, plus `?`, `*`, `<`, `>`, `|`, `"`.
+     - `isOrphanTarget`: `os.Stat`-based, with `filepath.Abs` resolution; resolution failures are conservatively treated as orphans.
+  4. Safety rails: confirmation prompt unless `--yes`/`-y`; `--dry-run` previews; per-deletion log lines + final tally.
+  5. New `DeletePendingTask(id) error` on `*store.DB` reuses existing `SQLDeletePendingTask` and returns `ErrPendingTaskNotFound` for unknown IDs.
+- **Files Affected**:
+  - `gitmap/cmd/pendingclear.go` (new)
+  - `gitmap/cmd/pending.go` — dispatcher branch for `clear`
+  - `gitmap/store/pendingtask.go` — new `DeletePendingTask`
+  - `gitmap/constants/constants_pending_task_msg.go` — `MsgPendingClear*` and `ErrPendingClear*` constants
+  - `gitmap/helptext/pending-clear.md` (new) — help page
+  - `gitmap/constants/constants.go` — version bumped to `3.88.0`
+- **Prevention**:
+  1. Every queue-style table needs a deterministic, scoped purge command — not just a list view + a retry-all.
+  2. Purge commands must default to the safest possible mode (here: orphans only) and require an explicit opt-in for destructive variants (`all`).
+  3. Confirmation prompts are mandatory for any DB-mutating command unless `--yes` is explicitly passed.
+  4. Path classifiers (`isURLShapedTarget`, `hasIllegalPathChar`) belong in the cleanup command, not in the clone path — the clone path already rejects bad inputs at the entry point (issues #11/#12); the cleanup command exists specifically to handle rows that predate those guards.
+

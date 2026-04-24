@@ -52,3 +52,29 @@ const (
 	MsgPendingReplaying     = "Replaying: gitmap %s\n"
 	MsgPendingSkipNotExist  = "Task #%d skipped: target path no longer exists, marking complete\n"
 )
+
+// `gitmap pending clear` messages.
+const (
+	MsgPendingClearHeader     = "\n  ╔══════════════════════════════════════╗\n  ║       gitmap pending clear           ║\n  ╚══════════════════════════════════════╝\n\n"
+	MsgPendingClearMode       = "  → Mode: %s\n"
+	MsgPendingClearScanned    = "  → Scanned %d pending task(s)\n"
+	MsgPendingClearCandidate  = "  • #%d  type=%-8s reason=%-18s target=%s\n"
+	MsgPendingClearDryRun     = "\n  (dry-run) — re-run without --dry-run to actually delete %d task(s).\n\n"
+	MsgPendingClearConfirm    = "  → Delete the %d task(s) above? (yes/N): "
+	MsgPendingClearAborted    = "  ✗ Cleared canceled by user. No tasks deleted.\n"
+	MsgPendingClearDeleted    = "  ✓ Deleted task #%d (%s)\n"
+	MsgPendingClearDone       = "\n  ✓ Cleared %d/%d pending task(s).\n\n"
+	MsgPendingClearNoMatches  = "  ✓ No %s tasks found — nothing to clear.\n"
+	MsgPendingClearReasonURL  = "url-shaped-target"
+	MsgPendingClearReasonChar = "illegal-path-char"
+	MsgPendingClearReasonOrph = "orphan-target-missing"
+	MsgPendingClearReasonAll  = "user-requested"
+	MsgPendingClearReasonByID = "id-match"
+)
+
+// `gitmap pending clear` errors.
+const (
+	ErrPendingClearUnknownMode = "Error: unknown clear mode %q (allowed: orphans|illegal|all|<id>)\n"
+	ErrPendingClearBadID       = "Error: invalid task id %q (operation: parse, reason: must be a positive integer)\n"
+	ErrPendingClearDeleteFail  = "Error: failed to delete task #%d: %v\n"
+)

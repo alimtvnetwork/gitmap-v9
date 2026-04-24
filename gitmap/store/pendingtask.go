@@ -143,6 +143,24 @@ func (db *DB) ListCompletedTasks() ([]model.CompletedTaskRecord, error) {
 	return scanCompletedTaskRows(rows)
 }
 
+// DeletePendingTask removes a single pending task by ID without
+// recording it in CompletedTask. Used by `gitmap pending clear` to
+// drop orphaned/illegal entries that should never have been queued.
+// Returns ErrPendingTaskNotFound when the ID does not exist so the
+// caller can surface a precise message instead of a silent no-op.
+func (db *DB) DeletePendingTask(id int64) error {
+	result, err := db.conn.Exec(constants.SQLDeletePendingTask, id)
+	if err != nil {
+		return fmt.Errorf(constants.ErrPendingTaskComplete, err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf(constants.ErrPendingTaskNotFound, id)
+	}
+
+	return nil
+}
+
 // findPendingTaskInTx reads a pending task within an existing transaction.
 func findPendingTaskInTx(tx *sql.Tx, id int64) (model.PendingTaskRecord, error) {
 	row := tx.QueryRow(constants.SQLSelectPendingTaskByID, id)
