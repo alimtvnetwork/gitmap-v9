@@ -72,8 +72,9 @@ func scanVersionTargets(
 }
 
 // loadRepoFiles wraps walkRepoFiles with the standardized error exit.
-func loadRepoFiles(root string) []string {
-	files, err := walkRepoFiles(root)
+// The exts allow-list comes from --ext (nil = include every text file).
+func loadRepoFiles(root string, exts []string) []string {
+	files, err := walkRepoFiles(root, exts)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, constants.ErrReplaceWalk, err)
 		os.Exit(2)
