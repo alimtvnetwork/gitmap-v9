@@ -23,13 +23,13 @@ import (
 )
 
 func main() {
-	mode, version, repoRoot, err := runner.ParseArgs(os.Args[1:])
+	args, err := runner.ParseArgs(os.Args[1:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "changelog: %v\n", err)
 		os.Exit(2)
 	}
 
-	exitCode, err := runner.Execute(mode, version, repoRoot, os.Stderr)
+	exitCode, err := runner.Execute(args, os.Stderr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "changelog: %v\n", err)
 		os.Exit(1)
