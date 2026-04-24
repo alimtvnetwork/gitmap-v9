@@ -77,7 +77,7 @@ func runClone(args []string) {
 	}
 
 	source := resolveCloneShorthand(cf.Source)
-	executeClone(source, cf.TargetDir, cf.SafePull, cf.GHDesktop)
+	executeClone(source, cf.TargetDir, cf.SafePull, cf.GHDesktop, cf.MaxConcurrency)
 }
 
 // shouldUseMultiClone returns true when the positional args describe a
@@ -352,7 +352,18 @@ func validateShorthandPath(resolved string) string {
 }
 
 // executeClone runs the clone operation and prints the summary.
-func executeClone(source, targetDir string, safePull, ghDesktop bool) {
+//
+// maxConcurrency is the worker count plumbed in from --max-concurrency.
+// Values <= 1 keep the legacy sequential runner; > 1 enables the
+// bounded worker pool in gitmap/cloner/concurrent.go. The on-disk
+// nested folder hierarchy is preserved at any N because each repo
+// still lands at filepath.Join(targetDir, rec.RelativePath).
+func executeClone(source, targetDir string, safePull, ghDesktop bool, maxConcurrency int) {
+	if maxConcurrency < 1 {
+		fmt.Fprintf(os.Stderr, constants.ErrCloneMaxConcurrencyInvalid, maxConcurrency)
+		os.Exit(1)
+	}
+
 	// Enqueue clone as a pending task before execution.
 	absTarget, absErr := filepath.Abs(targetDir)
 	if absErr != nil {
@@ -369,7 +380,10 @@ func executeClone(source, targetDir string, safePull, ghDesktop bool) {
 		defer taskDB.Close()
 	}
 
-	summary, err := cloner.CloneFromFile(source, targetDir, safePull)
+	summary, err := cloner.CloneFromFileWithOptions(source, targetDir, cloner.CloneOptions{
+		SafePull:       safePull,
+		MaxConcurrency: maxConcurrency,
+	})
 	if err != nil {
 		failPendingTask(taskDB, taskID, fmt.Sprintf(constants.ErrCloneFailed, source, err))
 		fmt.Fprintf(os.Stderr, constants.ErrCloneFailed, source, err)

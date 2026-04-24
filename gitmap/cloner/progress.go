@@ -3,6 +3,7 @@ package cloner
 import (
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
@@ -10,7 +11,13 @@ import (
 )
 
 // Progress tracks clone operation progress.
+//
+// Thread-safety: all counter mutations and stderr writes go through mu so
+// concurrent workers in the parallel runner (concurrent.go) cannot
+// interleave half-written status lines or corrupt the running totals.
+// The sequential runner pays only the cost of an uncontended mutex.
 type Progress struct {
+	mu      sync.Mutex
 	total   int
 	current int
 	start   time.Time
@@ -32,6 +39,9 @@ func NewProgress(total int, quiet bool) *Progress {
 
 // Begin prints the starting line for a repo.
 func (p *Progress) Begin(name string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	p.current++
 	if p.quiet {
 		return
@@ -42,6 +52,9 @@ func (p *Progress) Begin(name string) {
 
 // Done marks a repo as successfully completed.
 func (p *Progress) Done(result model.CloneResult, pulled bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	if pulled {
 		p.pulled++
 	} else {
@@ -58,6 +71,9 @@ func (p *Progress) Done(result model.CloneResult, pulled bool) {
 
 // Skip marks a repo as skipped because it was already up to date.
 func (p *Progress) Skip(result model.CloneResult) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	p.skipped++
 	if p.quiet {
 		return
@@ -68,6 +84,9 @@ func (p *Progress) Skip(result model.CloneResult) {
 
 // Fail marks a repo as failed.
 func (p *Progress) Fail(result model.CloneResult) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	p.failed++
 	if p.quiet {
 		return
@@ -78,6 +97,9 @@ func (p *Progress) Fail(result model.CloneResult) {
 
 // PrintSummary prints the final summary line.
 func (p *Progress) PrintSummary() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	if p.quiet {
 		return
 	}

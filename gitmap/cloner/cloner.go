@@ -15,24 +15,42 @@ import (
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/model"
 )
 
+// CloneOptions tunes a CloneFromFileWithOptions run. The zero value
+// keeps the historical behavior: sequential, progress-on-stderr.
+//
+// MaxConcurrency:
+//   - <= 1 → sequential (one repo at a time, original ordering).
+//   - >  1 → bounded worker pool (see concurrent.go). Per-repo paths
+//     come from each ScanRecord.RelativePath unchanged, so the on-disk
+//     nested folder hierarchy is preserved regardless of worker count.
+//
+// Quiet suppresses per-repo progress lines but keeps the final summary
+// (matches the legacy CloneFromFileQuiet behavior).
+type CloneOptions struct {
+	SafePull       bool
+	Quiet          bool
+	MaxConcurrency int
+}
+
 // CloneFromFile reads a source file and clones all repos under targetDir.
 func CloneFromFile(sourcePath, targetDir string, safePull bool) (model.CloneSummary, error) {
-	records, err := loadRecords(sourcePath)
-	if err != nil {
-		return model.CloneSummary{}, err
-	}
-
-	return cloneAll(records, targetDir, safePull, false), nil
+	return CloneFromFileWithOptions(sourcePath, targetDir, CloneOptions{SafePull: safePull})
 }
 
 // CloneFromFileQuiet reads a source file and clones with suppressed progress.
 func CloneFromFileQuiet(sourcePath, targetDir string, safePull bool) (model.CloneSummary, error) {
+	return CloneFromFileWithOptions(sourcePath, targetDir, CloneOptions{SafePull: safePull, Quiet: true})
+}
+
+// CloneFromFileWithOptions is the full-control entry point. The legacy
+// helpers above are thin wrappers that fill in CloneOptions defaults.
+func CloneFromFileWithOptions(sourcePath, targetDir string, opts CloneOptions) (model.CloneSummary, error) {
 	records, err := loadRecords(sourcePath)
 	if err != nil {
 		return model.CloneSummary{}, err
 	}
 
-	return cloneAll(records, targetDir, safePull, true), nil
+	return cloneAll(records, targetDir, opts), nil
 }
 
 // loadRecords detects file format and parses records.
@@ -105,65 +123,9 @@ func parseCloneLine(line string) model.ScanRecord {
 	return rec
 }
 
-// cloneAll iterates records and clones each one with progress tracking.
-func cloneAll(records []model.ScanRecord, targetDir string, safePull, quiet bool) model.CloneSummary {
-	if !safePull && hasExistingRepos(records, targetDir) {
-		safePull = true
-		fmt.Print(constants.MsgAutoSafePull)
-	}
-
-	cache := LoadCloneCache(targetDir)
-	progress := NewProgress(len(records), quiet)
-	summary := model.CloneSummary{}
-
-	for _, rec := range records {
-		progress.Begin(repoDisplayName(rec))
-
-		dest := filepath.Join(targetDir, rec.RelativePath)
-		if cache.IsUpToDate(rec, dest) {
-			result := model.CloneResult{Record: rec, Success: true}
-			progress.Skip(result)
-			summary = updateSummarySkipped(summary, result)
-			continue
-		}
-
-		result := cloneOrPullOne(rec, targetDir, safePull)
-		trackResult(progress, result, rec, targetDir, safePull)
-		summary = updateSummary(summary, result)
-
-		if result.Success {
-			cache.Record(rec, dest)
-		}
-	}
-
-	// Best-effort cache persistence — never fail the run on write errors.
-	_ = cache.Save()
-
-	progress.PrintSummary()
-
-	return summary
-}
-
-// repoDisplayName returns a display name for progress output.
-func repoDisplayName(rec model.ScanRecord) string {
-	if len(rec.RepoName) > 0 {
-		return rec.RepoName
-	}
-
-	return rec.RelativePath
-}
-
-// trackResult updates progress based on clone/pull outcome.
-func trackResult(p *Progress, result model.CloneResult, rec model.ScanRecord, targetDir string, safePull bool) {
-	if result.Success {
-		pulled := safePull && isGitRepo(filepath.Join(targetDir, rec.RelativePath))
-		p.Done(result, pulled)
-
-		return
-	}
-
-	p.Fail(result)
-}
+// (Dispatcher + sequential runner moved to runners.go to keep this file
+// focused on entry points + parsing. The parallel runner lives in
+// concurrent.go.)
 
 // hasExistingRepos checks if any target repo directories already exist.
 func hasExistingRepos(records []model.ScanRecord, targetDir string) bool {
@@ -228,57 +190,5 @@ func runClone(rec model.ScanRecord, dest string) model.CloneResult {
 	return model.CloneResult{Record: rec, Success: true, Notes: strategy.reason}
 }
 
-// recordTag returns a short, log-friendly identifier for a record using
-// the most specific field available. Used in error messages so users can
-// locate the failing row in their clone manifest at a glance.
-func recordTag(rec model.ScanRecord) string {
-	switch {
-	case len(rec.RepoName) > 0 && len(rec.RelativePath) > 0:
-		return fmt.Sprintf("%s (%s)", rec.RepoName, rec.RelativePath)
-	case len(rec.RepoName) > 0:
-		return rec.RepoName
-	case len(rec.RelativePath) > 0:
-		return rec.RelativePath
-	case len(rec.HTTPSUrl) > 0:
-		return rec.HTTPSUrl
-	case len(rec.SSHUrl) > 0:
-		return rec.SSHUrl
-	default:
-		return "<unnamed record>"
-	}
-}
-
-// pickURL selects the best available URL from a record.
-func pickURL(rec model.ScanRecord) string {
-	if len(rec.HTTPSUrl) > 0 {
-		return rec.HTTPSUrl
-	}
-
-	return rec.SSHUrl
-}
-
-// updateSummary increments counters and collects results.
-func updateSummary(s model.CloneSummary, r model.CloneResult) model.CloneSummary {
-	if r.Success {
-		s.Succeeded++
-		s.Cloned = append(s.Cloned, r)
-
-		return s
-	}
-	s.Failed++
-	s.Errors = append(s.Errors, r)
-
-	return s
-}
-
-// updateSummarySkipped records a cache-skipped repo: it counts toward
-// Succeeded (the desired state is achieved) and is also tracked in
-// Cloned + Skipped so downstream consumers (GitHub Desktop registration,
-// reporting) treat it the same as a fresh clone.
-func updateSummarySkipped(s model.CloneSummary, r model.CloneResult) model.CloneSummary {
-	s.Succeeded++
-	s.Cloned = append(s.Cloned, r)
-	s.Skipped = append(s.Skipped, r)
-
-	return s
-}
+// (recordTag, pickURL, updateSummary, and updateSummarySkipped moved
+// to summary.go so this file stays focused on entry points + parsing.)
