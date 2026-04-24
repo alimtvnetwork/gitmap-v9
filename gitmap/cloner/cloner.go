@@ -190,57 +190,5 @@ func runClone(rec model.ScanRecord, dest string) model.CloneResult {
 	return model.CloneResult{Record: rec, Success: true, Notes: strategy.reason}
 }
 
-// recordTag returns a short, log-friendly identifier for a record using
-// the most specific field available. Used in error messages so users can
-// locate the failing row in their clone manifest at a glance.
-func recordTag(rec model.ScanRecord) string {
-	switch {
-	case len(rec.RepoName) > 0 && len(rec.RelativePath) > 0:
-		return fmt.Sprintf("%s (%s)", rec.RepoName, rec.RelativePath)
-	case len(rec.RepoName) > 0:
-		return rec.RepoName
-	case len(rec.RelativePath) > 0:
-		return rec.RelativePath
-	case len(rec.HTTPSUrl) > 0:
-		return rec.HTTPSUrl
-	case len(rec.SSHUrl) > 0:
-		return rec.SSHUrl
-	default:
-		return "<unnamed record>"
-	}
-}
-
-// pickURL selects the best available URL from a record.
-func pickURL(rec model.ScanRecord) string {
-	if len(rec.HTTPSUrl) > 0 {
-		return rec.HTTPSUrl
-	}
-
-	return rec.SSHUrl
-}
-
-// updateSummary increments counters and collects results.
-func updateSummary(s model.CloneSummary, r model.CloneResult) model.CloneSummary {
-	if r.Success {
-		s.Succeeded++
-		s.Cloned = append(s.Cloned, r)
-
-		return s
-	}
-	s.Failed++
-	s.Errors = append(s.Errors, r)
-
-	return s
-}
-
-// updateSummarySkipped records a cache-skipped repo: it counts toward
-// Succeeded (the desired state is achieved) and is also tracked in
-// Cloned + Skipped so downstream consumers (GitHub Desktop registration,
-// reporting) treat it the same as a fresh clone.
-func updateSummarySkipped(s model.CloneSummary, r model.CloneResult) model.CloneSummary {
-	s.Succeeded++
-	s.Cloned = append(s.Cloned, r)
-	s.Skipped = append(s.Skipped, r)
-
-	return s
-}
+// (recordTag, pickURL, updateSummary, and updateSummarySkipped moved
+// to summary.go so this file stays focused on entry points + parsing.)
