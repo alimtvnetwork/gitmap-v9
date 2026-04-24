@@ -1,4 +1,4 @@
-.PHONY: lint vet test build clean setup vulncheck all release release-dry
+.PHONY: lint vet test build clean setup vulncheck all release release-dry changelog changelog-check
 
 GO       := go
 LINT     := golangci-lint
@@ -48,3 +48,14 @@ clean:
 	@rm -f $(BINARY)
 	@rm -rf $(MODULE)/.gitmap/release-assets
 	@echo "Cleaned."
+
+## Changelog — regenerate CHANGELOG.md and src/data/changelog.ts from
+## Conventional Commits since the latest annotated git tag.
+## Usage: make changelog VERSION=v3.92.0
+changelog:
+	@cd scripts/changelog && $(GO) run . -mode=write -version=$(VERSION) -repo=../..
+
+## Changelog-check — fail (exit 3) when the on-disk changelogs drift
+## from the regenerated output. Wire into CI.
+changelog-check:
+	@cd scripts/changelog && $(GO) run . -mode=check -version=$(VERSION) -repo=../..
