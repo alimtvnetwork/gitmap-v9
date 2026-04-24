@@ -4,6 +4,7 @@ import { FolderGit2, GitBranch, RefreshCw, Eye } from "lucide-react";
 import DocsLayout from "@/components/docs/DocsLayout";
 import FeatureCard from "@/components/docs/FeatureCard";
 import InstallBlock from "@/components/docs/InstallBlock";
+import CommandBubbles from "@/components/docs/CommandBubbles";
 import { VERSION } from "@/constants/index";
 
 const INSTALL_TABS = [
