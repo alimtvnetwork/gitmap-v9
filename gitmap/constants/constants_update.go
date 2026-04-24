@@ -14,6 +14,12 @@ const FlagRepoPath = "--repo-path"
 const FlagReportErrors = "--report-errors"
 const FlagReportErrorsFile = "--report-errors-file"
 const FlagDebugRepoDetect = "--debug-repo-detect"
+const FlagDebugWindows = "--debug-windows"
+
+// Debug-windows env bridge — propagated to the detached cleanup child so
+// the dump runs on both sides of the handoff without requiring users to
+// pass the flag twice.
+const EnvDebugWindows = "GITMAP_DEBUG_WINDOWS"
 
 // Report-errors values and env-var bridge to run.ps1 / run.sh.
 const (
@@ -74,6 +80,27 @@ const (
 	UpdateCleanupLogStart = "update-cleanup starting: self=%s"
 	UpdateCleanupLogDone = "update-cleanup finished: removed=%d"
 	UpdateCleanupLogDelayInvalid = "update-cleanup ignored invalid delay value: %q"
+)
+
+// --debug-windows dump messages. All routed via fmt.Fprintf(os.Stderr, ...)
+// so the dump survives even when stdout is being captured by a parent
+// process. The dump is intentionally verbose and prefixed with
+// `[debug-windows]` so it's grep-friendly in CI logs and bug reports.
+const (
+	MsgDebugWinHeader     = "\n[debug-windows] ===== update-cleanup handoff diagnostics =====\n"
+	MsgDebugWinPhase      = "[debug-windows] phase            : %s\n"
+	MsgDebugWinGOOS       = "[debug-windows] GOOS             : %s\n"
+	MsgDebugWinSelf       = "[debug-windows] self executable  : %s\n"
+	MsgDebugWinPID        = "[debug-windows] self pid         : %d\n"
+	MsgDebugWinPPID       = "[debug-windows] parent pid       : %d\n"
+	MsgDebugWinSource     = "[debug-windows] resolution source: %s\n"
+	MsgDebugWinTarget     = "[debug-windows] resolved target  : %s\n"
+	MsgDebugWinTargetExists = "[debug-windows] target exists    : %t\n"
+	MsgDebugWinChildArgv  = "[debug-windows] child argv       : %v\n"
+	MsgDebugWinChildEnv   = "[debug-windows] %-16s : %s\n"
+	MsgDebugWinChildPID   = "[debug-windows] spawned child pid: %d\n"
+	MsgDebugWinNote       = "[debug-windows] %s\n"
+	MsgDebugWinFooter     = "[debug-windows] ============================================\n\n"
 )
 
 // Update error messages.
