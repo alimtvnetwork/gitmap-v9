@@ -128,9 +128,15 @@
     font-weight: 700;
   }
 
-  p, li, td, th, label, button, input, select, textarea {
+  p, li, td, th, label, input, select, textarea {
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* Buttons explicitly use Ubuntu (proportional), never Ubuntu Mono.
+     Mono is reserved for code blocks per the typography spec. */
+  button {
+    font-family: 'Ubuntu', system-ui, sans-serif;
   }
 
   code, pre, .font-mono {
@@ -511,6 +517,55 @@
   .tab-underline[data-active="true"]::after,
   .tab-underline:hover::after {
     transform: scaleX(1);
+  }
+
+  /* Button slide-shine — a quick light sweep across the button on hover.
+     Uses a 0.4s CSS3-only transition (well within the 0.3-0.4s budget).
+     Pair with `.btn-slide` on any rounded interactive element. The
+     pseudo-element is non-interactive and inherits border-radius. */
+  .btn-slide {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    transition: transform 0.3s ease, box-shadow 0.3s ease,
+                border-color 0.3s ease, background-color 0.3s ease,
+                color 0.3s ease, filter 0.3s ease;
+  }
+  .btn-slide::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      115deg,
+      transparent 35%,
+      hsl(var(--primary-foreground) / 0.28) 50%,
+      transparent 65%
+    );
+    transform: translateX(-110%);
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .btn-slide:hover::before {
+    transform: translateX(110%);
+  }
+  .btn-slide:hover {
+    transform: translateY(-1px);
+  }
+  .btn-slide > * {
+    position: relative;
+    z-index: 1;
+  }
+  /* Ghost variant: lighter sweep tinted with primary, for outline buttons
+     where primary-foreground would be invisible against the card surface. */
+  .btn-slide-ghost::before {
+    background: linear-gradient(
+      115deg,
+      transparent 35%,
+      hsl(var(--primary) / 0.18) 50%,
+      transparent 65%
+    );
   }
 
   /* Primary CTA glow — animated conic ring on hover. */
