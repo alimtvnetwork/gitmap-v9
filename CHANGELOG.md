@@ -1,6 +1,6 @@
 # Changelog
 
-## v3.91.0 — (2026-04-24) — `--debug-windows` shows the exact spawn command and cleanup plan
+## v3.90.0 — (2026-04-24) — `--debug-windows` shows the exact spawn command and cleanup plan
 
 ### Added
 
@@ -40,12 +40,11 @@ After v3.86 added `--debug-windows` and v3.87 added the on-disk handoff log, the
 - `gitmap/cmd/updatehandoff_phase3.go` — `spawnDeployedCleanupWindows` and `spawnDeployedCleanupUnix` both call `dumpDebugWindowsCommandPlan` immediately after `dumpDebugWindowsHandoff`.
 - `gitmap/cmd/updatecleanup.go` — `runUpdateCleanup` calls `dumpDebugWindowsCleanupPlan(ctx)` immediately after `loadUpdateCleanupContext`.
 - `gitmap/constants/constants_update.go` — new `MsgDebugWinCmdLine`, `MsgDebugWinCmdNote`, `MsgDebugWinCleanHdr`, `MsgDebugWinCleanGlob`, `MsgDebugWinCleanMatch`, `MsgDebugWinCleanEmpty`, `MsgDebugWinCleanSwap`, `MsgDebugWinCleanShim`, `MsgDebugWinCleanShimSkip`, `MsgDebugWinCleanShimDel`, `MsgDebugWinCleanFooter`.
-- `gitmap/cmd/startupversioncheck.go` — added `update:cleanup-plan-dump` → `3.91.0` to `cmdMinVersions`.
-- `gitmap/constants/constants.go` — bumped `Version` to `3.91.0`.
+- `gitmap/constants/constants.go` — bumped `Version` to `3.90.0`.
 
 ### Compatibility
 
-Pure addition gated behind `--debug-windows` / `GITMAP_DEBUG_WINDOWS=1`. Default invocations are byte-for-byte identical to v3.90.0. The pre-flight glob scan is read-only and runs in microseconds — even with the debug flag on, it does not perceptibly slow cleanup.
+Pure addition gated behind `--debug-windows` / `GITMAP_DEBUG_WINDOWS=1`. Default invocations are byte-for-byte identical to v3.89.0. The pre-flight glob scan is read-only and runs in microseconds — even with the debug flag on, it does not perceptibly slow cleanup.
 
 
 ## v3.89.0 — (2026-04-24) — Robust multi-URL clone parsing (PowerShell + bash)
