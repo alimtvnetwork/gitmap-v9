@@ -185,16 +185,27 @@ The `CREATE TABLE IF NOT EXISTS` handles the new table idempotently.
 9. Register with GitHub Desktop (using flattened path)
 10. IF --delete AND source folder != target folder:
     a. Remove the old versioned folder
-11. Shell handoff: set GITMAP_SHELL_HANDOFF to the flattened path
+11. Shell handoff: write flattened path to `$GITMAP_HANDOFF_FILE`
+    (set by the shell wrapper function) so the parent shell cds to it.
 ```
 
 ---
 
 ## Shell Handoff
 
-The flattened path is used for the `GITMAP_SHELL_HANDOFF` environment
-variable, ensuring the parent shell navigates to the correct folder
-after clone-next completes.
+The flattened path is written to the sentinel file pointed to by
+`GITMAP_HANDOFF_FILE` (exported by the `gitmap` shell wrapper function
+before invocation). After the binary exits, the wrapper reads that file
+and `cd`s the parent shell to the flattened folder.
+
+Without the wrapper installed, `GITMAP_HANDOFF_FILE` is unset and the
+write becomes a silent no-op — the user's cwd is unchanged.
+
+> History: prior to v3.103.0 the spec referenced
+> `GITMAP_SHELL_HANDOFF` as an env var set by `os.Setenv`. That was a
+> no-op (child cannot mutate parent env). v3.103.0 replaced it with
+> the sentinel-file mechanism. See
+> [.lovable/memory/features/shell-handoff-file.md](../../.lovable/memory/features/shell-handoff-file.md).
 
 See the [navigation helper](31-cd.md) spec for the shell wrapper
 mechanism.
