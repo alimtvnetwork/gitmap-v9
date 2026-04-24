@@ -8,6 +8,18 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v3.93.0",
+    date: "2026-04-24",
+    subtitle: "update-cleanup Phase 3 now logs inner child failures durably",
+    items: [
+      "Fixed: the repeated 'update-cleanup keeps failing with no logs' loop was an observability gap inside the detached Phase 3 deployed-binary child, not a missing outer handoff. The parent already logged resolve/start/done, but several inner cleanup branches still wrote only to child stderr, which is exactly what Windows hidden-process handoffs can swallow.",
+      "Fixed: `gitmap/cmd/updatecleanup_remove.go` now mirrors `glob_error`, per-attempt `remove_retry`, final `remove_fail`, and `remove_ok` into the durable handoff log and the optional `--debug-windows-json` NDJSON sink, so per-file cleanup failures survive even when the detached child console output does not.",
+      "Fixed: `gitmap/cmd/updatecleanup_extra.go` now mirrors the previously ad-hoc special-case cleanup branches too — `drive_root_skip`, `drive_root_remove_fail` / `drive_root_remove_ok`, `swap_glob_error`, and `swap_remove_fail` / `swap_remove_ok` now produce durable events instead of stderr-only lines.",
+      "Added: RCA report at `spec/02-app-issues/31-update-cleanup-phase3-observability-gap.md` documenting the actual root cause, affected files, solution, and validation steps.",
+      "Added: `gitmap/cmd/updatecleanup_handoff_test.go` covering stable handoff-log formatting plus forwarding of `--debug-windows`, `--debug-windows-json`, `GITMAP_UPDATE_CLEANUP_DELAY_MS`, and `GITMAP_DEBUG_WINDOWS_JSON` into the cleanup child. Targeted `go test ./cmd ...` validation passed.",
+    ],
+  },
+  {
     version: "v3.92.0",
     date: "2026-04-24",
     subtitle: "Lock the bare-URL → `clone` shortcut behind regression tests + fix duplicate `fileExists` build break",

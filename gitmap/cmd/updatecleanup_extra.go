@@ -79,6 +79,16 @@ func isRemovableDriveRootShim(shimPath, selfPath string) bool {
 	}
 	if info.Size() > driveRootShimMaxBytes {
 		fmt.Fprintf(os.Stderr, "  !! [cleanup] skipping drive-root shim %s (size %d > 5MB)\n", shimPath, info.Size())
+		logHandoffEvent("cleanup", "drive_root_skip", map[string]string{
+			"path":  shimPath,
+			"reason": "size_guard",
+			"bytes": fmt.Sprintf("%d", info.Size()),
+		})
+		emitDebugWindowsJSON("drive_root_skip", map[string]any{
+			"path":   shimPath,
+			"reason": "size_guard",
+			"bytes":  info.Size(),
+		})
 
 		return false
 	}
@@ -97,11 +107,22 @@ func isLiteralDriveRoot(path string) bool {
 func removeDriveRootShim(shimPath string) int {
 	if err := os.Remove(shimPath); err != nil {
 		fmt.Fprintf(os.Stderr, "  !! [cleanup] could not remove drive-root shim %s: %v\n", shimPath, err)
+		logHandoffEvent("cleanup", "drive_root_remove_fail", map[string]string{
+			"path": shimPath,
+			"err":  err.Error(),
+		})
+		emitDebugWindowsJSON("drive_root_remove_fail", map[string]any{
+			"path": shimPath,
+			"err":  err.Error(),
+		})
 
 		return 0
 	}
 
 	fmt.Printf("  → Removed obsolete drive-root shim: %s\n", shimPath)
+	logHandoffEvent("cleanup", "drive_root_remove_ok", map[string]string{
+		"path": shimPath,
+	})
 
 	return 1
 }
@@ -142,6 +163,14 @@ func removeCloneSwapDirsIn(base string) int {
 	matches, err := filepath.Glob(filepath.Join(base, cloneSwapDirGlob))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, constants.ErrUpdateCleanupGlob, base, err)
+		logHandoffEvent("cleanup", "swap_glob_error", map[string]string{
+			"base": base,
+			"err":  err.Error(),
+		})
+		emitDebugWindowsJSON("swap_glob_error", map[string]any{
+			"base": base,
+			"err":  err.Error(),
+		})
 
 		return 0
 	}
@@ -154,10 +183,21 @@ func removeCloneSwapDirsIn(base string) int {
 		}
 		if err := os.RemoveAll(match); err != nil {
 			fmt.Fprintf(os.Stderr, "  !! [cleanup] could not remove swap dir %s: %v\n", match, err)
+			logHandoffEvent("cleanup", "swap_remove_fail", map[string]string{
+				"path": match,
+				"err":  err.Error(),
+			})
+			emitDebugWindowsJSON("swap_remove_fail", map[string]any{
+				"path": match,
+				"err":  err.Error(),
+			})
 
 			continue
 		}
 		fmt.Printf("  → Removed swap dir: %s\n", match)
+		logHandoffEvent("cleanup", "swap_remove_ok", map[string]string{
+			"path": match,
+		})
 		removed++
 	}
 

@@ -1,6 +1,36 @@
 # Changelog
 
-## v3.92.0 — (2026-04-24) — Lock the bare-URL → `clone` shortcut behind regression tests + fix duplicate `fileExists` build break
+## v3.93.0 — (2026-04-24) — update-cleanup Phase 3 now logs inner child failures durably
+
+### Fixed
+
+- **Root cause of the "update-cleanup keeps failing with no logs" loop:** the Phase 3 deployed-binary handoff was working at the outer lifecycle level (`resolve`, `start_ok`, `done`), but several **inner cleanup branches** still wrote only to child stderr. On Windows that child runs hidden/detached, so the exact per-file failure often vanished even though the parent printed `→ Cleanup process started (pid=...)`.
+- **`gitmap/cmd/updatecleanup_remove.go` now mirrors per-file failures into the durable handoff log and JSON sink.** Added durable events for:
+  - `glob_error` when `filepath.Glob` fails for a cleanup pattern
+  - `remove_retry` on every transient `os.Remove` failure before the final attempt
+  - `remove_fail` after retry exhaustion
+  - `remove_ok` on successful deletion
+- **`gitmap/cmd/updatecleanup_extra.go` now mirrors the previously silent "special-case" cleanup branches too.** Added durable events for:
+  - `drive_root_skip` when the obsolete drive-root shim is skipped by the 5 MB guard
+  - `drive_root_remove_fail` / `drive_root_remove_ok`
+  - `swap_glob_error` for `*.gitmap-tmp-*` enumeration failures
+  - `swap_remove_fail` / `swap_remove_ok` for leftover swap-directory cleanup
+- **Result:** when the detached cleanup child fails again, the failure is now forensically recoverable even if console stderr is swallowed. The user gets exact branch-level evidence in the always-on handoff log and, when enabled, the `--debug-windows-json` NDJSON sink.
+
+### Added
+
+- **Root Cause Analysis:** `spec/02-app-issues/31-update-cleanup-phase3-observability-gap.md` documents the repeated user report, the actual failure mode, the observability gap, the solution, and the validation steps.
+- **Automated regression tests** in `gitmap/cmd/updatecleanup_handoff_test.go` covering:
+  - stable `formatHandoffLogLine(...)` output for child failure events
+  - forwarding of `--debug-windows` / `--debug-windows-json` in `buildCleanupChildArgs()`
+  - forwarding of `GITMAP_UPDATE_CLEANUP_DELAY_MS`, `GITMAP_DEBUG_WINDOWS`, and `GITMAP_DEBUG_WINDOWS_JSON` in `buildCleanupChildEnv()`
+
+### Validation
+
+- `go test ./cmd -run "TestFormatHandoffLogLineIncludesStableFields|TestBuildCleanupChildArgsForwardsDebugFlags|TestBuildCleanupChildEnvForwardsDelayAndJSONPath|TestCollectBackupCleanupDirsIncludesPathDerivedDeployAndBuild|TestCollectTempCleanupDirsIncludesTempAndDerivedTargets" -v -count=1`
+- All targeted tests passed.
+
+
 
 ### Fixed
 
