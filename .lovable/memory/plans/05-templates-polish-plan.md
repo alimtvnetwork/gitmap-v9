@@ -65,12 +65,15 @@ All three pieces share the existing resolver / merge / marker-block primitives. 
 - [x] Helptext `gitmap/helptext/templates-diff.md` with exit-code table + pre-commit example.
 - [x] Alias `td` registered alongside `diff`.
 
-### Phase 4 — Wiring + docs
+### Phase 4 — Wiring + docs (in progress)
 
-- [ ] Register `init` and `diff` under `templatescli.go` dispatcher.
-- [ ] Update `gitmap/helptext/templates.md` with the two new subcommands.
-- [ ] Update `src/data/changelog.ts` (`v3.19.0` — new langs + init; `v3.20.0` — diff). Two version bumps if shipped sequentially, or one combined.
-- [ ] README: short snippet under "Templates" section.
+- [x] Register `init` and `diff` under `templatescli.go` dispatcher. (`diff` shipped in v3.108; `init` blocked on Phase 2.)
+- [x] Update `gitmap/helptext/templates.md` usage banner with the new subcommand. (v3.108)
+- [x] Update `src/data/changelog.ts` with v3.107 (renderer corpus) + v3.108 (`templates diff`).
+- [x] Add `templates diff` entry to `src/data/commands.ts` so the docs site command browser surfaces it. (v3.108)
+- [ ] Add the `init` entry to `src/data/commands.ts` once Phase 2 ships.
+- [ ] README: short snippet under "Templates" section (defer until `init` lands so the snippet shows the full lifecycle).
+- [ ] Completion generator: `td` / `ti` are templates subcommands, not top-level — matches the existing `group create` precedent (subcommand IDs are intentionally excluded from `generatedCommands`). No marker change needed; documented here so future audits don't re-open this.
 - [ ] Manual smoke matrix:
   - Empty repo → `templates init --lang go,node --lfs` → expect 3 files.
   - Existing `.gitignore` → refuse without `--force`.
