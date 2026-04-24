@@ -155,3 +155,29 @@
   3. Embedded script comments/docs must be updated together with orchestration changes so future debugging is based on reality, not stale notes.
   4. Best-effort cleanup may stay non-fatal, but target-resolution failures must always be visible in the console and verbose log.
 
+## 11 — `Unknown command: https://...` Recurs Even After v3.81.0 URL-Shortcut Fix (FIXED v3.84.0)
+- **Status**: Fixed in v3.84.0
+- **Reported (4th time)**: User typed `gitmap https://github.com/.../email-creator-v1,https://github.com/.../email-reader-v3,https://github.com/.../account-automator` (and space-separated and mixed comma+space variants). All three forms produced `Unknown command: https://github.com/alimtvnetwork/email-creator-v1`. Issue #07 logged this as fixed in v3.81.0 — yet it kept happening.
+- **Root Cause** (two layers, why the same error keeps showing up):
+  1. **Stale binary on PATH.** The URL-shortcut + multi-URL clone code IS present in the source tree (`gitmap/cmd/root.go`'s `isLikelyURL` rewrite + `flattenURLArgs` in `clonemulti.go`). The user's installed `gitmap.exe` on PATH is *older than v3.81.0* and simply does not contain that shortcut. Every recent `gitmap update` has been failing in phase-3 cleanup (issues #09 / #10), so the freshly built binary never actually reaches the deployed location — the user keeps running an old one.
+  2. **Original v3.81.0 shortcut was too narrow.** `Run()` only checked `isLikelyURL(os.Args[1])`. If the user prepends a flag (`gitmap --verbose https://...`) the URL is in `os.Args[2]`, the shortcut misses, dispatch fails, and the user sees the same `Unknown command: --verbose` / `Unknown command: https://...` style failure. The shortcut needed to scan the full argv slice.
+  3. **Error message gave no actionable hint.** `Unknown command: https://...` looked like a dead-end. Nothing pointed the user at `gitmap clone <url>` or `gitmap update`, so each retry produced the same opaque error and the same frustration.
+- **Solution**:
+  1. Replaced the single-position `isLikelyURL(os.Args[1])` check with `shouldRewriteToClone(os.Args[1:])`, which scans every positional arg (skipping leading flags) and accepts any token whose comma-split pieces look like a git URL. All four reported forms now redirect to `clone` automatically:
+     - `gitmap url1,url2,url3`
+     - `gitmap url1, url2, url3`
+     - `gitmap url1 url2 url3`
+     - `gitmap --verbose url1,url2`
+  2. Added `ErrUnknownCommandURLHint` so when the offending token IS URL-shaped, the CLI now prints the explicit `gitmap clone <url>` form AND the `gitmap update` instruction with a note to reopen the terminal so PATH refreshes — instead of a dead-end error.
+  3. Bumped version to `v3.84.0` so users can confirm via `gitmap version` whether their binary actually contains this fix.
+- **Files Affected**:
+  - `gitmap/cmd/root.go` — `shouldRewriteToClone` / `looksLikeURLToken` / `looksLikeFlag` helpers; argv scan instead of `os.Args[1]` only; URL-aware unknown-command branch
+  - `gitmap/constants/constants_messages.go` — new `ErrUnknownCommandURLHint` constant
+  - `gitmap/constants/constants.go` — version bumped to `3.84.0`
+- **Why It "Repeated"**: The fix had been in source since v3.81.0 but the deployed binary on the user's machine was older because phase-3 cleanup was crashing every update (issues #09/#10). Verified independently here: `gitmap version` on the user's terminal would have shown <3.81.0. Once #09/#10 land and the user re-runs `gitmap update` successfully, the new binary reaches PATH and this error disappears even *without* this patch — but #11 also makes the shortcut more robust AND gives a self-explanatory error if it ever surfaces again on a stale binary.
+- **Prevention**:
+  1. URL-rewrite shortcuts must scan the **full positional list**, not just `os.Args[1]`, so leading flags don't defeat them.
+  2. Unknown-command error paths should detect the offender's *shape* (URL? path? known shorthand?) and emit a targeted hint instead of a generic dead-end.
+  3. Whenever a "shortcut" fix is reported as not working, first check the user's installed binary version — stale PATH installs are the most common reason a "fixed" feature appears to regress.
+  4. The update-cleanup chain (issues #09/#10) is on the critical path for getting fixes onto user machines; failures there silently block every other improvement.
+
