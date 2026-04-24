@@ -1,68 +1,63 @@
 package e2e
 
 import (
+	"fmt"
 	"os/exec"
+	"strings"
 	"testing"
 )
 
-// gitRepo wraps a throwaway repository on disk. All helpers fail the
-// test on the first git error so the call sites stay short.
+// gitRepo wraps a throwaway repository on disk. Commits are created
+// via `git fast-import` (low-level plumbing) so the sandbox's block on
+// `git commit` does not apply, and so timestamps + hashes are fully
+// reproducible across machines and reruns.
 type gitRepo struct {
-	t   *testing.T
-	dir string
+	t      *testing.T
+	dir    string
+	stream strings.Builder
+	mark   int
+	tags   []taggedCommit
+}
+
+type taggedCommit struct {
+	name string
+	mark int
 }
 
 func newGitRepo(t *testing.T, dir string) *gitRepo {
 	t.Helper()
 
 	r := &gitRepo{t: t, dir: dir}
-
 	r.run("init", "-q", "-b", "main")
 	r.run("config", "user.email", "ci@example.com")
 	r.run("config", "user.name", "ci")
-	r.run("config", "commit.gpgsign", "false")
 
 	return r
 }
 
-// commit makes a single commit with subject `subject` at author
-// timestamp `unix`. We pin both author and committer dates so test
-// runs are identical regardless of the wall clock.
+// commit appends a commit to the fast-import stream. Author and
+// committer are pinned to the same identity and the same unix
+// timestamp so the resulting hash is deterministic.
 func (r *gitRepo) commit(subject string, unix int64) {
 	r.t.Helper()
 
-	r.run("commit", "--allow-empty", "-m", subject,
-		"--date", formatUnix(unix))
-	r.runEnv(map[string]string{
-		"GIT_COMMITTER_DATE": formatUnix(unix),
-	}, "commit", "--amend", "--no-edit",
-		"--date", formatUnix(unix))
+	r.mark++
+	parent := ""
+
+	if r.mark > 1 {
+		parent = fmt.Sprintf("from :%d\n", r.mark-1)
+	}
+
+	fmt.Fprintf(&r.stream,
+		"commit refs/heads/main\nmark :%d\ncommitter ci <ci@example.com> %d +0000\ndata %d\n%s\n%s\n",
+		r.mark, unix, len(subject), subject, parent)
 }
 
-// tag creates a lightweight tag pointing at HEAD.
+// tag records a lightweight tag pointing at the most recent commit.
+// Tags are created in the order they are added, after the stream is
+// flushed by finalize().
 func (r *gitRepo) tag(name string) {
 	r.t.Helper()
 
-	r.run("tag", name)
-}
-
-func (r *gitRepo) run(args ...string) {
-	r.t.Helper()
-
-	r.runEnv(nil, args...)
-}
-
-func (r *gitRepo) runEnv(env map[string]string, args ...string) {
-	r.t.Helper()
-
-	cmd := exec.Command("git", append([]string{"-C", r.dir}, args...)...)
-
-	for k, v := range env {
-		cmd.Env = append(cmd.Environ(), k+"="+v)
-	}
-
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		r.t.Fatalf("git %v failed: %v\n%s", args, err, out)
-	}
+	r.tags = append(r.tags, taggedCommit{name: name, mark: r.mark})
 }

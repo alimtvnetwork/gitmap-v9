@@ -24,6 +24,7 @@ func TestFixtureMarkdownAndTypeScript(t *testing.T) {
 	r := newGitRepo(t, repoRoot)
 	seedFiles(t, repoRoot)
 	seedHistory(r)
+	r.finalize()
 
 	gotMD, gotTS := generate(t, repoRoot, "v1.0.0", "2026-04-24")
 
