@@ -49,6 +49,7 @@ Flags accepted in both modes:
 | `--yes` / `-y` | bool | false | Skip the interactive `y/N` prompt |
 | `--dry-run` | bool | false | Force report-only behavior (overrides `--yes`) |
 | `--quiet` / `-q` | bool | false | Suppress per-file diff lines; print summary only |
+| `--ext` | string | "" | Comma-separated extension allow-list (e.g. `.go,.md`). Leading dot optional, case-insensitive, deduplicated. Empty = all text files. |
 
 Exit codes:
 
