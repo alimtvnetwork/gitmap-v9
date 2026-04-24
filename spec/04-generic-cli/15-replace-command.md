@@ -246,6 +246,9 @@ replace: applied 47 replacements across 12 files
 | User answers `n` to prompt | No writes, exit 1 |
 | `--yes` flag | No prompt, writes immediately |
 | File inside `.gitmap/release-assets/` contains match | Skipped |
+| `replace -1 --ext .go,.md` on mixed repo | Only `.go` and `.md` files scanned/written |
+| `--ext go` (no leading dot) | Normalized to `.go`, otherwise identical to dotted form |
+| `--ext .GO` on `app.go` | Case-insensitive match, file included |
 
 ---
 
