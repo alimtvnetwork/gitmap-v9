@@ -1,6 +1,6 @@
 # 106 — `commit-left` / `commit-right` / `commit-both`
 
-**Status:** PLANNED (spec only — implementation deferred)
+**Status:** IMPLEMENTED — `commit-right` shipped in v3.76.0; `commit-left` and `commit-both` shipped in v3.102.0 (Phases 2 + 3) reusing the same Plan/Replay primitives via `committransfer.runOneDirection`.
 **Companion family:** `mv` / `merge-both` / `merge-left` / `merge-right` (see `97-move-and-merge.md`)
 **Related:** `24-amend-author.md` (commit metadata rewriting), `61-refactor-autocommit.md` (auto-commit primitives)
 
