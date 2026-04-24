@@ -260,6 +260,77 @@ jobs:
           path: /tmp/lint-suggestions/comment.md
           retention-days: 14
 
+      - name: Generate pending-issues entry from NEW lint findings
+        # Converts the NEW findings (same diff that gates the job) into
+        # a properly-formatted "## NN — CI Lint Failures" entry for
+        # `.lovable/pending-issues/01-current-issues.md`. Idempotent via
+        # a fingerprint marker so re-running CI on the same SHA never
+        # appends duplicates. On PRs this is a dry run that uploads the
+        # proposed entry as an artifact; on main pushes the entry is
+        # committed back so the issues memory stays in sync with reality.
+        if: always() && needs.sha-check.outputs.already-built != 'true'
+        id: lint-issue-summary
+        shell: bash
+        run: |
+          BASELINE=/tmp/lint-baseline/report.json
+          if [ "${{ inputs.lint_baseline_disable }}" = "true" ]; then
+            BASELINE=""
+          fi
+          mkdir -p /tmp/lint-issue-entry
+          APPLY_FLAG=""
+          if [ "${{ github.event_name }}" = "push" ] \
+             && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            APPLY_FLAG="--apply"
+          fi
+          python3 .github/scripts/lint-issue-summary.py \
+            --current /tmp/lint-current/report.json \
+            --baseline "$BASELINE" \
+            --issues-file .lovable/pending-issues/01-current-issues.md \
+            --out-preview /tmp/lint-issue-entry/proposed.md \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --sha "${{ github.sha }}" \
+            $APPLY_FLAG
+          # Mirror the proposed entry to the run summary so reviewers
+          # can see the exact text without downloading the artifact.
+          if [ -s /tmp/lint-issue-entry/proposed.md ]; then
+            {
+              echo "### Proposed pending-issues entry"
+              echo ""
+              cat /tmp/lint-issue-entry/proposed.md
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload proposed issue entry
+        if: always() && needs.sha-check.outputs.already-built != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-issue-entry
+          path: /tmp/lint-issue-entry/proposed.md
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Commit appended issue entry (main only)
+        # Only writes on main pushes that actually appended a new entry.
+        # The script is idempotent (fingerprint marker) so reruns are
+        # safe; this step just persists the change back to the repo.
+        if: |
+          success() &&
+          needs.sha-check.outputs.already-built != 'true' &&
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- .lovable/pending-issues/01-current-issues.md; then
+            echo "no issues-file changes to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .lovable/pending-issues/01-current-issues.md
+          git commit -m "ci(lint): append pending-issues entry for NEW findings [skip ci]"
+          git push origin HEAD:main
+
       - name: Find existing PR comment
         # Sticky comment: peter-evans/find-comment locates the previous
         # comment by the COMMENT_MARKER sentinel that lint-suggest.py
