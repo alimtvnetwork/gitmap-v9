@@ -527,12 +527,12 @@
     position: relative;
     overflow: hidden;
     isolation: isolate;
-    transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-                box-shadow 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-                border-color 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-                background-color 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-                color 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-                filter 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 1s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 1s cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 1s cubic-bezier(0.16, 1, 0.3, 1),
+                color 1s cubic-bezier(0.16, 1, 0.3, 1),
+                filter 1s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .btn-slide::before {
     content: "";
@@ -546,7 +546,7 @@
       transparent 65%
     );
     transform: translateX(-110%);
-    transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
     z-index: 0;
   }
