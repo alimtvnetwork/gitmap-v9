@@ -1,8 +1,9 @@
 # gitmap inject (alias: inj)
 
-Inject an existing on-disk folder into your tooling: register with
-GitHub Desktop, open in VS Code, and (when a remote origin exists)
-record it in the gitmap database so it appears in `cd`, `list`, etc.
+Inject an existing on-disk folder into your tooling: register it
+with GitHub Desktop, open it in VS Code, and (when a remote `origin`
+is configured) record it in the gitmap SQLite database so it appears
+in `cd`, `list`, etc.
 
 ## Usage
 
@@ -10,19 +11,45 @@ record it in the gitmap database so it appears in `cd`, `list`, etc.
     gitmap inject <folder>     # inject the given folder
     gitmap inj   <folder>      # short alias
 
-`<folder>` accepts absolute, relative, or `~`-prefixed paths.
+## Supported `<folder>` formats
 
-## What happens
+`<folder>` is optional. When omitted, the current working directory
+is used. When provided, all of the following are accepted:
 
-1. **Database**: if `git remote get-url origin` succeeds, the repo is
-   upserted into SQLite (HTTPS or SSH URL captured automatically).
-   Local-only folders skip this step silently.
-2. **GitHub Desktop**: the folder is registered. Non-repo folders are
-   silently ignored by Desktop.
-3. **VS Code**: opens the folder in a new window when VS Code is on
-   PATH; prints a warning otherwise (no exit).
-4. **Shell handoff**: the parent shell `cd`s into the injected folder
-   (same UX as `clone`, `cn`, and `cd`).
+| Format    | Example                          | Resolved against         |
+|-----------|----------------------------------|--------------------------|
+| absolute  | `C:\dev\macro-ahk-v11`           | filesystem root          |
+| absolute  | `/home/me/dev/some-repo`         | filesystem root          |
+| relative  | `../sibling-repo`                | current working dir      |
+| relative  | `./projects/api`                 | current working dir      |
+| home `~`  | `~/dev/macro-ahk-v11`            | `$HOME` (or USERPROFILE) |
+| bare name | `macro-ahk-v11` (next to cwd)    | current working dir      |
+
+The path must resolve to an existing directory. A missing or
+non-directory target aborts with a clear error before any side
+effects run.
+
+## What happens, step by step
+
+1. **Database upsert (conditional).** gitmap runs
+   `git remote get-url origin` inside the target folder.
+   - If a remote URL is returned, the repo is upserted into SQLite.
+     SSH URLs (`git@…` or `ssh://…`) are stored in the `SSHUrl`
+     column; everything else is stored in `HTTPSUrl`. After this,
+     the repo is reachable via `gitmap cd <name>`, `gitmap list`,
+     etc.
+   - If `origin` is missing (local-only repo, brand-new sandbox,
+     or non-repo folder), gitmap prints
+     `no remote configured, skipping database` and continues.
+     **No error, no exit** — the database step is best-effort.
+2. **GitHub Desktop registration.** The folder is registered with
+   Desktop. Non-repo folders are silently ignored by Desktop.
+3. **VS Code open.** Opens the folder in a new VS Code window.
+   When `code` is not on PATH, gitmap prints a warning and moves
+   on — the command still succeeds.
+4. **Shell handoff.** The parent shell `cd`s into the injected
+   folder (same UX as `clone`, `cn`, and `cd`). Skipped silently
+   when the shell wrapper isn't installed.
 
 ## Examples
 
@@ -31,16 +58,19 @@ record it in the gitmap database so it appears in `cd`, `list`, etc.
       → registers cwd, opens in VS Code, cds you back in.
 
     gitmap inject ~/dev/macro-ahk-v11
-      → resolves the path, registers, opens.
+      → resolves the ~ path, registers, opens.
 
     gitmap inj ../sibling-repo
-      → relative paths work; resolved against cwd.
+      → relative path resolved against cwd.
+
+    gitmap inject C:\sandbox\plain-folder
+      → no .git/, no origin → DB step is skipped, but Desktop +
+        VS Code still proceed and you're cd'd into the folder.
 
 ## Notes
 
-- No `.git/` required — VS Code happily opens any folder, and Desktop
-  silently skips non-repos. If you `inject` a plain folder, you'll
-  see a "no remote configured, skipping database" line, then Desktop
-  + VS Code proceed normally.
+- No `.git/` is required. VS Code happily opens any folder, and
+  Desktop silently skips non-repos. The DB upsert is the only
+  step that requires `origin`, and it fails open.
 - For a fresh clone instead of injecting an existing folder, use
   `gitmap clone <url>`.

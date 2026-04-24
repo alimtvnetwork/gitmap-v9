@@ -49,7 +49,9 @@ const InstallBlock = ({ command, tabs }: InstallBlockProps) => {
               key={tab.label}
               onClick={() => setActive(i)}
               data-active={i === active}
-              className={`px-4 py-1.5 rounded-md text-sm font-sans font-medium transition-all duration-300 ${
+              className={`btn-slide ${
+                i === active ? "" : "btn-slide-ghost"
+              } px-4 py-1.5 rounded-md text-sm font-sans font-medium transition-all duration-300 ${
                 i === active
                   ? "shadow-sm"
                   : "border border-transparent bg-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-foreground"
