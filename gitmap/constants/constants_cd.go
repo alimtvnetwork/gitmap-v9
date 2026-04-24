@@ -53,6 +53,16 @@ const (
 	EnvGitmapWrapperVal = "1"
 )
 
+// Shell-handoff sentinel file env var. Set by the wrapper function to a
+// writable temp file path; commands like clone-next, as, cd write the
+// destination directory to that file, and the wrapper cds to it.
+//
+// Spec: spec/04-generic-cli/21-post-install-shell-activation/01-contract.md
+const EnvGitmapHandoffFile = "GITMAP_HANDOFF_FILE"
+
+// Shell-handoff error format.
+const ErrShellHandoffWriteFmt = "  ⚠ Could not write shell-handoff file %s: %v\n"
+
 // CD wrapper verification messages.
 const (
 	MsgWrapperNotLoaded = "  %s! Shell wrapper not active%s — 'gitmap cd' printed the path but cannot change your directory.\n    Run: %s. $PROFILE%s (PowerShell) or %ssource ~/.bashrc%s / %ssource ~/.zshrc%s, then retry.\n"
@@ -86,6 +96,21 @@ gitmap() {
     fi
     return 0
   fi
+  local handoff status
+  handoff="$(mktemp -t gitmap-handoff.XXXXXX 2>/dev/null)" || handoff=""
+  if [ -n "$handoff" ]; then
+    GITMAP_HANDOFF_FILE="$handoff" GITMAP_WRAPPER=1 command gitmap "$@"
+    status=$?
+    if [ -s "$handoff" ]; then
+      local target
+      target="$(cat "$handoff")"
+      if [ -n "$target" ] && [ -d "$target" ]; then
+        builtin cd "$target" || true
+      fi
+    fi
+    rm -f "$handoff"
+    return $status
+  fi
   command gitmap "$@"
 }`
 
@@ -116,6 +141,21 @@ gitmap() {
       builtin cd "$dest" || return $?
     fi
     return 0
+  fi
+  local handoff status
+  handoff="$(mktemp -t gitmap-handoff.XXXXXX 2>/dev/null)" || handoff=""
+  if [[ -n "$handoff" ]]; then
+    GITMAP_HANDOFF_FILE="$handoff" GITMAP_WRAPPER=1 command gitmap "$@"
+    status=$?
+    if [[ -s "$handoff" ]]; then
+      local target
+      target="$(cat "$handoff")"
+      if [[ -n "$target" && -d "$target" ]]; then
+        builtin cd "$target" || true
+      fi
+    fi
+    rm -f "$handoff"
+    return $status
   fi
   command gitmap "$@"
 }`
@@ -166,7 +206,22 @@ function gitmap {
     }
     return
   }
-  & $real @args
+  $handoff = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "gitmap-handoff-$([System.Guid]::NewGuid().ToString('N')).txt")
+  try {
+    $env:GITMAP_HANDOFF_FILE = $handoff
+    $env:GITMAP_WRAPPER = "1"
+    & $real @args
+    if ((Test-Path -LiteralPath $handoff) -and ((Get-Item -LiteralPath $handoff).Length -gt 0)) {
+      $target = (Get-Content -LiteralPath $handoff -Raw).Trim()
+      if ($target -and (Test-Path -LiteralPath $target)) {
+        Set-Location -LiteralPath $target
+      }
+    }
+  }
+  finally {
+    Remove-Item -LiteralPath $handoff -ErrorAction SilentlyContinue
+    Remove-Item Env:\GITMAP_HANDOFF_FILE -ErrorAction SilentlyContinue
+  }
 }`
 
 // CD function messages.

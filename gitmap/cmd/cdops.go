@@ -31,6 +31,7 @@ func runCDLookup(name string, args []string) {
 
 	path := resolveCDPath(name, records, pick)
 	fmt.Print(path)
+	WriteShellHandoff(path)
 	warnIfNoWrapper()
 }
 
@@ -127,6 +128,7 @@ func runCDRepos(args []string) {
 
 	path := promptCDReposPick(records)
 	fmt.Print(path)
+	WriteShellHandoff(path)
 }
 
 // parseCDReposFlags parses the --group flag for the repos subcommand.
