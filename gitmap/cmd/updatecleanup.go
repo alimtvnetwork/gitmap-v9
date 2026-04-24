@@ -7,12 +7,18 @@ import (
 	"time"
 
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v7/gitmap/verbose"
 )
 
 // runUpdateCleanup handles the "update-cleanup" subcommand.
 // Removes leftover temp binaries and .old backup files.
 func runUpdateCleanup() {
+	selfPath := resolveCleanupSelfPath()
 	fmt.Println(constants.MsgUpdateCleanStart)
+	if len(selfPath) > 0 {
+		fmt.Printf(constants.MsgUpdateCleanBinary, selfPath)
+	}
+	logUpdateCleanup(constants.UpdateCleanupLogStart, selfPath)
 	delayUpdateCleanupIfNeeded()
 
 	ctx := loadUpdateCleanupContext()
@@ -21,6 +27,7 @@ func runUpdateCleanup() {
 	total += cleanupDriveRootShim(ctx)
 	total += cleanupCloneSwapDirs(ctx)
 	printUpdateCleanupResult(total)
+	logUpdateCleanup(constants.UpdateCleanupLogDone, total)
 }
 
 // delayUpdateCleanupIfNeeded gives the just-exited handoff/update process time
@@ -32,6 +39,9 @@ func delayUpdateCleanupIfNeeded() {
 	}
 	ms, err := strconv.Atoi(raw)
 	if err != nil || ms <= 0 {
+		fmt.Fprintf(os.Stderr, constants.ErrUpdateCleanDelayInvalid, raw)
+		logUpdateCleanup(constants.UpdateCleanupLogDelayInvalid, raw)
+
 		return
 	}
 	fmt.Printf(constants.MsgUpdateCleanDelay, ms)
@@ -47,4 +57,12 @@ func printUpdateCleanupResult(total int) {
 	}
 
 	fmt.Println(constants.MsgUpdateCleanNone)
+}
+
+// logUpdateCleanup writes cleanup diagnostics to the shared verbose logger.
+func logUpdateCleanup(format string, args ...interface{}) {
+	log := verbose.Get()
+	if log != nil {
+		log.Log(format, args...)
+	}
 }

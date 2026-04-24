@@ -20,6 +20,7 @@ import (
 	"runtime"
 
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v7/gitmap/verbose"
 )
 
 // scheduleDeployedCleanupHandoff hands off cleanup work to the freshly
@@ -33,11 +34,14 @@ import (
 // current handoff process has time to exit and release its file lock.
 // On Unix we just exec it inline since no lock conflicts exist.
 //
-// Best-effort cleanup remains non-fatal, but launch failures are now
-// printed to stderr so the user can see what went wrong.
+// Best-effort cleanup remains non-fatal, but launch failures are printed
+// to stderr and verbose logs so the user can see what went wrong.
 func scheduleDeployedCleanupHandoff() {
-	deployed := resolveDeployedBinaryPath()
+	deployed, source := resolveDeployedBinaryPath()
 	if len(deployed) == 0 {
+		fmt.Fprint(os.Stderr, constants.ErrUpdatePhase3TargetMissing)
+		logUpdatePhase3(constants.UpdatePhase3LogTargetMissing)
+
 		return
 	}
 
@@ -45,44 +49,55 @@ func scheduleDeployedCleanupHandoff() {
 	if err == nil && normalizeCleanupPath(self) == normalizeCleanupPath(deployed) {
 		// We *are* the deployed binary (Unix in-place update). Just
 		// run cleanup directly — no handoff needed.
+		logUpdatePhase3(constants.UpdatePhase3LogInline, deployed)
 		runUpdateCleanup()
 
 		return
 	}
 
 	if runtime.GOOS != constants.OSWindows {
-		spawnDeployedCleanupUnix(deployed)
+		spawnDeployedCleanupUnix(deployed, source)
 
 		return
 	}
 
-	spawnDeployedCleanupWindows(deployed)
+	spawnDeployedCleanupWindows(deployed, source)
 }
 
 // resolveDeployedBinaryPath returns the path to the freshly-deployed
-// gitmap binary on PATH, falling back to the active binary's expected
-// deploy location. Returns "" if it cannot be determined.
-func resolveDeployedBinaryPath() string {
-	if path, err := exec.LookPath(constants.GitMapBin); err == nil {
-		if resolved, evalErr := filepath.EvalSymlinks(path); evalErr == nil {
-			return resolved
-		}
-
-		return path
+// gitmap binary plus the resolution source label used in logs.
+//
+// Resolution order matters:
+//   1. Config-declared deployed binary (powershell.json deployPath)
+//   2. Sibling gitmap(.exe) next to the handoff copy
+//   3. PATH lookup as a last resort only
+//
+// PATH is intentionally last because duplicate/stale gitmap.exe installs can
+// linger on Windows and point cleanup at the wrong binary after an update.
+func resolveDeployedBinaryPath() (string, string) {
+	deployed, _ := resolveDeployedAndConfigPaths()
+	if len(deployed) > 0 {
+		return deployed, constants.UpdateCleanupSourceConfig
 	}
 
 	self, err := os.Executable()
+	if err == nil {
+		candidate := filepath.Join(filepath.Dir(self), deployedBinaryName())
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, constants.UpdateCleanupSourceSibling
+		}
+	}
+
+	path, err := exec.LookPath(constants.GitMapBin)
 	if err != nil {
-		return ""
+		return "", constants.UpdateCleanupSourceUnknown
+	}
+	resolved, evalErr := filepath.EvalSymlinks(path)
+	if evalErr == nil {
+		return resolved, constants.UpdateCleanupSourcePath
 	}
 
-	dir := filepath.Dir(self)
-	candidate := filepath.Join(dir, deployedBinaryName())
-	if _, err := os.Stat(candidate); err == nil {
-		return candidate
-	}
-
-	return ""
+	return path, constants.UpdateCleanupSourcePath
 }
 
 // deployedBinaryName returns the platform-specific deployed binary filename.
@@ -98,9 +113,11 @@ func deployedBinaryName() string {
 // detached hidden process. We avoid `cmd.exe /C start ...` entirely because
 // its quoting rules are brittle when combined with Go's Windows argument
 // escaping and can surface GUI popups like "Windows cannot find '\\'".
-func spawnDeployedCleanupWindows(deployed string) {
+func spawnDeployedCleanupWindows(deployed, source string) {
 	fmt.Printf(constants.MsgUpdatePhase3Handoff, filepath.Base(deployed))
+	fmt.Printf(constants.MsgUpdatePhase3Resolve, source)
 	fmt.Printf(constants.MsgUpdatePhase3Target, deployed)
+	logUpdatePhase3(constants.UpdatePhase3LogResolve, source, deployed)
 
 	cmd := exec.Command(deployed, constants.CmdUpdateCleanup)
 	cmd.Stdout = os.Stdout
@@ -110,16 +127,36 @@ func spawnDeployedCleanupWindows(deployed string) {
 	cmd.Env = append(os.Environ(), constants.EnvUpdateCleanupDelayMS+"=1500")
 	if err := cmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, constants.ErrUpdatePhase3Handoff, deployed, err)
+		logUpdatePhase3(constants.UpdatePhase3LogStartFail, deployed, err)
+
+		return
 	}
+
+	fmt.Printf(constants.MsgUpdatePhase3Started, cmd.Process.Pid)
+	logUpdatePhase3(constants.UpdatePhase3LogStarted, cmd.Process.Pid, deployed)
 }
 
 // spawnDeployedCleanupUnix invokes the deployed binary's update-cleanup
 // directly. No lock conflicts exist on Unix, so we don't need detachment.
-func spawnDeployedCleanupUnix(deployed string) {
+func spawnDeployedCleanupUnix(deployed, source string) {
 	fmt.Printf(constants.MsgUpdatePhase3Handoff, filepath.Base(deployed))
+	fmt.Printf(constants.MsgUpdatePhase3Resolve, source)
+	fmt.Printf(constants.MsgUpdatePhase3Target, deployed)
+	logUpdatePhase3(constants.UpdatePhase3LogResolve, source, deployed)
 
 	cmd := exec.Command(deployed, constants.CmdUpdateCleanup)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	_ = cmd.Run()
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, constants.ErrUpdatePhase3Handoff, deployed, err)
+		logUpdatePhase3(constants.UpdatePhase3LogStartFail, deployed, err)
+	}
+}
+
+// logUpdatePhase3 writes handoff diagnostics to the shared verbose logger.
+func logUpdatePhase3(format string, args ...interface{}) {
+	log := verbose.Get()
+	if log != nil {
+		log.Log(format, args...)
+	}
 }
