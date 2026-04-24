@@ -96,15 +96,14 @@ unless `--mirror` is passed (see flags).
 > the goal is "the same human-readable evolution," not a tree-hash-equivalent
 > mirror.
 
-## 5. `commit-both` — two sequential passes
+## 5. `commit-both` — two sequential passes (default) or `--interleave`
 
-> **Implementation note (v3.102.0):** the original draft of this section
-> specified an author-date interleave. That variant was deferred in
-> favor of two sequential passes, which give deterministic output and
-> avoid mid-run merge-base drift. The interleaved variant remains a
-> future enhancement (tracked separately).
+> **Implementation note (v3.104.0):** sequential remains the default
+> because it gives deterministic per-side summaries and avoids
+> mid-run merge-base drift. The author-date interleave variant
+> originally drafted in this section now ships behind `--interleave`.
 
-`commit-both` resolves the union as follows:
+### 5.1 Default — sequential
 
 1. **Pass 1 — LEFT → RIGHT.** Build plan from LEFT, preview, prompt
    (unless `-y` / `--dry-run`), replay onto RIGHT, push.
@@ -126,6 +125,35 @@ Edge cases:
 - If LEFT and RIGHT have a commit with the same cleaned message +
   same author date + same diff, the provenance footer's
   `AlreadyReplayed` check skips it on the second pass.
+
+### 5.2 `--interleave` (v3.104.0+)
+
+1. Build BOTH directional plans up front.
+2. Merge the two commit lists into a single stream sorted by
+   `AuthorAt` (stable sort; LEFT-side wins exact ties).
+3. Print the unified plan with each step labelled `L→R` or `R→L`.
+4. Single confirmation prompt.
+5. Walk the stream and replay each commit onto its **opposite** side
+   in chronological order.
+6. After the stream, push each side that received commits and print
+   a per-side summary.
+
+Tradeoffs:
+
+- ✓ Closer to "what actually happened first" across both sides.
+- ✓ One prompt instead of two.
+- ⚠ First per-commit failure aborts mid-stream — leaves whichever side
+  was being written in a partial state. Use `--dry-run` first.
+- ⚠ No per-direction merge-base re-computation between commits, so
+  later interleaved commits may re-touch files that an opposite-direction
+  commit just modified. Conflicts surface immediately as a failure.
+
+`--interleave` is rejected (exit 2) for `commit-left` / `commit-right`.
+
+Implementation: `committransfer.RunBothInterleaved` in
+`gitmap/committransfer/interleave.go`. Sort invariant + tie-breaking
+pinned by `TestBuildInterleavedStream*` in
+`gitmap/committransfer/interleave_test.go`.
 
 ## 6. Commit-message normalization pipeline
 
