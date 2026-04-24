@@ -198,8 +198,9 @@ func runCloneNext(args []string) {
 		handleCloneNextRemoval(currentFolder, cwd, targetPath, cnFlags.Delete, keep)
 	}
 
-	// Set GITMAP_SHELL_HANDOFF for the shell wrapper to cd into the new folder.
-	os.Setenv("GITMAP_SHELL_HANDOFF", targetPath)
+	// Shell handoff: write target path to the wrapper's sentinel file
+	// so the parent shell can cd into the new flattened folder.
+	WriteShellHandoff(targetPath)
 
 	// Open in VS Code if available.
 	openInVSCode(targetPath)
