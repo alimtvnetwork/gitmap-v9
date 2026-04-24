@@ -3,8 +3,10 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/alimtvnetwork/gitmap-v7/gitmap/clonenext"
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
 )
 
