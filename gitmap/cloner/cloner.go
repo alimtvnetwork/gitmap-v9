@@ -124,16 +124,62 @@ func parseCloneLine(line string) model.ScanRecord {
 }
 
 // cloneAll iterates records and clones each one with progress tracking.
-func cloneAll(records []model.ScanRecord, targetDir string, safePull, quiet bool) model.CloneSummary {
+//
+// Sequential vs parallel dispatch is decided by opts.MaxConcurrency. Both
+// paths share the same Progress + CloneCache instances; the parallel
+// path's thread-safety contract lives in concurrent.go.
+//
+// Hierarchy preservation: every repo lands at filepath.Join(targetDir,
+// rec.RelativePath), so the nested folder layout captured by `gitmap
+// scan` is reproduced exactly under targetDir — even at MaxConcurrency
+// > 1, where ordering of progress lines is no longer sequential.
+func cloneAll(records []model.ScanRecord, targetDir string, opts CloneOptions) model.CloneSummary {
+	safePull := opts.SafePull
 	if !safePull && hasExistingRepos(records, targetDir) {
 		safePull = true
 		fmt.Print(constants.MsgAutoSafePull)
 	}
 
 	cache := LoadCloneCache(targetDir)
-	progress := NewProgress(len(records), quiet)
-	summary := model.CloneSummary{}
+	progress := NewProgress(len(records), opts.Quiet)
 
+	workers := normalizeWorkers(opts.MaxConcurrency, len(records))
+
+	var summary model.CloneSummary
+	if workers > 1 {
+		fmt.Fprintf(os.Stderr, constants.MsgCloneConcurrencyEnabledFmt, workers)
+		summary = runConcurrent(records, targetDir, safePull, workers, progress, cache)
+	} else {
+		summary = runSequential(records, targetDir, safePull, progress, cache)
+	}
+
+	// Best-effort cache persistence — never fail the run on write errors.
+	_ = cache.Save()
+
+	progress.PrintSummary()
+
+	return summary
+}
+
+// normalizeWorkers clamps the requested worker count to a sane range.
+// Zero or negative → 1 (sequential). Larger than the work queue → queue
+// length (no point spawning idle workers).
+func normalizeWorkers(requested, jobs int) int {
+	if requested < 1 {
+		return 1
+	}
+	if requested > jobs && jobs > 0 {
+		return jobs
+	}
+
+	return requested
+}
+
+// runSequential is the legacy in-order runner. Kept as a separate
+// function so concurrent.go can stay focused on the worker-pool path.
+func runSequential(records []model.ScanRecord, targetDir string, safePull bool,
+	progress *Progress, cache *CloneCache) model.CloneSummary {
+	summary := model.CloneSummary{}
 	for _, rec := range records {
 		progress.Begin(repoDisplayName(rec))
 
@@ -153,11 +199,6 @@ func cloneAll(records []model.ScanRecord, targetDir string, safePull, quiet bool
 			cache.Record(rec, dest)
 		}
 	}
-
-	// Best-effort cache persistence — never fail the run on write errors.
-	_ = cache.Save()
-
-	progress.PrintSummary()
 
 	return summary
 }
