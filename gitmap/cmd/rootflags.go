@@ -57,6 +57,7 @@ type CloneFlags struct {
 	GHDesktop   bool
 	NoReplace   bool
 	Verbose     bool
+	Audit       bool
 }
 
 // parseCloneFlags parses flags for the clone command.
@@ -67,6 +68,7 @@ func parseCloneFlags(args []string) CloneFlags {
 	ghDesktopFlag := fs.Bool("github-desktop", false, constants.FlagDescGHDesktop)
 	verboseFlag := fs.Bool("verbose", false, constants.FlagDescVerbose)
 	noReplaceFlag := fs.Bool("no-replace", false, constants.FlagDescCloneNoReplace)
+	auditFlag := fs.Bool(constants.CloneFlagAudit, false, constants.FlagDescCloneAudit)
 	sshKeyFlag := fs.String("ssh-key", "", "SSH key name for clone")
 	fs.StringVar(sshKeyFlag, "K", "", "SSH key name (short)")
 	fs.Parse(args)
@@ -81,6 +83,7 @@ func parseCloneFlags(args []string) CloneFlags {
 		GHDesktop:  *ghDesktopFlag,
 		NoReplace:  *noReplaceFlag,
 		Verbose:    *verboseFlag,
+		Audit:      *auditFlag,
 	}
 }
 
