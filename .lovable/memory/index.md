@@ -32,6 +32,7 @@ Clone audit (v3.99.0+): `gitmap clone --audit <manifest>` is read-only; never in
 - [Clone-Next Flatten](mem://features/clone-next-flatten) — Default flatten: clone into base-name folder, version tracking in DB with RepoVersionHistory table (DONE v2.75.0)
 - [CN Find-Next Bridge](mem://features/cn-find-next-bridge) — PLANNED v3.55.0: `gitmap cn` no-args detects scope, auto-probes (spec 103, depth=5, parallel), interactive TUI picker, parallel updates. `find-next` stays read-only.
 - [Clone Direct URL](mem://features/clone-direct-url) — gitmap clone accepts direct HTTPS/SSH URLs with optional folder name, auto-flattens versioned URLs
+- [Clone Audit](mem://features/clone-audit) — `gitmap clone --audit <manifest>` plans+prints diff-style report (+/~/=/?/!) without invoking git (v3.99.0)
 - [Move & Merge Commands](mem://features/movemerge) — gitmap mv / merge-both / merge-left / merge-right with L/R/S/A/B/Q prompt + --prefer-* bypass + URL-side commit/push (v2.96.0)
 - [Release Alias](mem://features/release-alias) — gitmap as / release-alias (ra) / release-alias-pull (rap) with auto-stash labeled by alias-version-unixts, label-match pop for concurrent safety (v3.0.0)
 - [Self Install Uninstall](mem://features/self-install-uninstall) — gitmap self-install / self-uninstall manage the binary itself (separate from third-party install/uninstall). Embedded scripts via go:embed, Windows handoff, marker-block PATH cleanup
