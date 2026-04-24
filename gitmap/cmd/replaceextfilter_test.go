@@ -99,7 +99,7 @@ func TestWalkRepoFilesHonorsExtFilter(t *testing.T) {
 	mustWriteFile(t, filepath.Join(root, "CHANGELOG.MD"), []byte("upper-case ext\n"))
 	mustWriteFile(t, filepath.Join(root, ".git", "HEAD"), []byte("ref:\n"))
 
-	got, err := walkRepoFiles(root, []string{".go", ".md"})
+	got, err := walkRepoFiles(root, []string{".go", ".md"}, true)
 	if err != nil {
 		t.Fatalf("walkRepoFiles: %v", err)
 	}

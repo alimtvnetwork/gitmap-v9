@@ -14,7 +14,7 @@ func runReplaceLiteral(oldS, newS string, opts replaceOpts) {
 		os.Exit(1)
 	}
 	root := repoRoot()
-	files := loadRepoFiles(root, opts.exts)
+	files := loadRepoFiles(root, opts.exts, opts.extCaseIns)
 
 	pair := replacePair{old: oldS, new: newS}
 	hits, total := scanReplacements(files, []replacePair{pair})
@@ -40,7 +40,7 @@ func runReplaceVersion(n int, opts replaceOpts, isAll bool) {
 		return
 	}
 	root := repoRoot()
-	files := loadRepoFiles(root, opts.exts)
+	files := loadRepoFiles(root, opts.exts, opts.extCaseIns)
 
 	hits, total := scanVersionTargets(files, base, k, targets, opts.quiet)
 	fmt.Printf(constants.MsgReplaceSummary, len(hits), total)
