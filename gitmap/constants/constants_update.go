@@ -151,28 +151,31 @@ $configDeployedBinary = $null
 if (Test-Path $configPath) {
     $cfg = Get-Content $configPath | ConvertFrom-Json
     if ($cfg.deployPath) {
-	    $configDeployedBinary = Join-Path $cfg.deployPath "%[3]s\%[4]s"
+    	$configDeployedBinary = Join-Path $cfg.deployPath "%[3]s\%[4]s"
     }
 }
 
-$activeCmdForDeploy = Get-Command gitmap -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($activeCmdForDeploy -and (Test-Path $activeCmdForDeploy.Source)) {
-    $resolvedActiveBinary = (Resolve-Path $activeCmdForDeploy.Source).Path
-    $resolvedActiveDir = Split-Path $resolvedActiveBinary -Parent
-    if ((Split-Path $resolvedActiveDir -Leaf) -in %[5]s) {
-        $effectiveDeployTarget = Split-Path $resolvedActiveDir -Parent
-    } else {
-        $effectiveDeployTarget = Split-Path $resolvedActiveDir -Parent
-    }
-    if ($effectiveDeployTarget) {
-        $deployedBinary = Join-Path $effectiveDeployTarget "%[3]s\%[4]s"
-    }
-}
-
-if ((-not $deployedBinary) -and $configDeployedBinary) {
+if ($configDeployedBinary) {
     $deployedBinary = $configDeployedBinary
 }
+
+if ((-not $deployedBinary) -or (-not (Test-Path $deployedBinary))) {
+    $activeCmdForDeploy = Get-Command gitmap -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($activeCmdForDeploy -and (Test-Path $activeCmdForDeploy.Source)) {
+        $resolvedActiveBinary = (Resolve-Path $activeCmdForDeploy.Source).Path
+        $resolvedActiveDir = Split-Path $resolvedActiveBinary -Parent
+        if ((Split-Path $resolvedActiveDir -Leaf) -in %[5]s) {
+            $effectiveDeployTarget = Split-Path $resolvedActiveDir -Parent
+        } else {
+            $effectiveDeployTarget = Split-Path $resolvedActiveDir -Parent
+        }
+        if ($effectiveDeployTarget) {
+            $deployedBinary = Join-Path $effectiveDeployTarget "%[3]s\%[4]s"
+        }
+    }
+}
 `
+
 	UpdatePSVersionBefore = `
 $activeBinary = $null
 $activeBefore = "unknown"

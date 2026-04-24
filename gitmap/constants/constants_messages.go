@@ -54,32 +54,11 @@ const (
 	ErrDesktopReadFailed  = "Error reading %s: %v\n"
 	ErrDesktopParseFailed = "Error parsing JSON from %s: %v\n"
 	ErrNoAbsPath          = "no absolute path"
-	ErrCloneFolderIsURL   = "  [clone] refusing folder name %q — this looks like a git URL.\n" +
-		"  This usually means PowerShell silently split a comma-joined URL\n" +
-		"  list into separate arguments and gitmap mistook the second URL\n" +
-		"  for a destination folder. To clone all of them, use one of:\n" +
-		"\n" +
-		"    gitmap clone %s,%s\n" +
-		"\n" +
-		"  (quote the whole thing if your shell still mangles commas:\n" +
-		"    gitmap clone \"<url1>,<url2>,<url3>\")\n\n"
 )
 
 // Command dispatch errors.
 const (
-	ErrUnknownCommand        = "Unknown command: %s\n"
-	ErrUnknownCommandURLHint = "Unknown command: %s\n" +
-		"\n" +
-		"  This looks like a git URL. Newer gitmap versions auto-redirect\n" +
-		"  bare-URL invocations to `gitmap clone`. Your installed binary\n" +
-		"  appears to predate that shortcut (added in v3.81.0).\n" +
-		"\n" +
-		"  Fix one of two ways:\n" +
-		"    1. Use the explicit form right now:\n" +
-		"         gitmap clone %[1]s\n" +
-		"    2. Update gitmap so the shortcut is built in:\n" +
-		"         gitmap update\n" +
-		"       (then re-open your terminal so PATH picks up the new binary)\n\n"
+	ErrUnknownCommand  = "Unknown command: %s\n"
 	ErrUnknownGroupSub = "Unknown group subcommand: %s\n"
 )
 

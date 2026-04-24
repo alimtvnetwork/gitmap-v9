@@ -906,7 +906,7 @@ function Copy-DocsSite {
 }
 
 # -- Resolve deploy target -------------------------------------
-# Priority: 1) -DeployPath flag  2) globally installed gitmap location  3) powershell.json default
+# Priority: 1) -DeployPath flag  2) powershell.json default  3) globally installed gitmap location
 function Resolve-DeployTarget {
     param($Config, $OverridePath)
 
@@ -917,7 +917,15 @@ function Resolve-DeployTarget {
         return $OverridePath
     }
 
-    # 2) If gitmap is already on PATH, deploy to its parent directory
+    # 2) Config-declared deploy root wins over PATH so duplicate / stale
+    # installs cannot hijack self-update and keep refreshing the wrong binary.
+    if (-not [string]::IsNullOrWhiteSpace($Config.deployPath)) {
+        Write-Info "Deploy target: powershell.json default -> $($Config.deployPath)"
+
+        return $Config.deployPath
+    }
+
+    # 3) PATH fallback only when config is missing
     $activeCmd = Get-Command gitmap -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($activeCmd) {
         $activePath = $activeCmd.Source
@@ -931,24 +939,21 @@ function Resolve-DeployTarget {
             # Either way the deploy target is the parent of that subfolder.
             if (Test-KnownAppSubdir $activeDirName) {
                 $deployTarget = Split-Path $activeDir -Parent
-                Write-Info "Deploy target: detected from PATH -> $deployTarget"
+                Write-Info "Deploy target: detected from PATH fallback -> $deployTarget"
 
                 return $deployTarget
             }
 
             # Binary is directly in a folder (not nested under gitmap/)
-            # Deploy target = that folder's parent so we create gitmap/ there
+            # Deploy target = that folder's parent so we create gitmap/ there.
             $deployTarget = Split-Path $activeDir -Parent
-            Write-Info "Deploy target: detected from PATH -> $deployTarget"
+            Write-Info "Deploy target: detected from PATH fallback -> $deployTarget"
 
             return $deployTarget
         }
     }
 
-    # 3) Fall back to powershell.json default
-    Write-Info "Deploy target: powershell.json default -> $($Config.deployPath)"
-
-    return $Config.deployPath
+    return ""
 }
 
 # -- Deploy to target directory --------------------------------
