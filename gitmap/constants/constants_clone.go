@@ -42,3 +42,21 @@ const (
 	ShorthandCSV  = "csv"
 	ShorthandText = "text"
 )
+
+// Multi-URL clone messages (spec/01-app/104-clone-multi.md).
+const (
+	MsgCloneInvalidURLFmt    = "  ⚠ Skipping invalid URL: %s\n"
+	MsgCloneSummaryMultiFmt  = "\n  Multi-clone summary: %d succeeded, %d failed (of %d URLs)\n"
+	MsgCloneRegisteredInline = "  ✓ Registered with GitHub Desktop: %s\n"
+	MsgCloneMultiBegin       = "\n  Cloning %d repositories...\n"
+	MsgCloneMultiItem        = "\n  [%d/%d] %s\n"
+	ErrCloneAllInvalid       = "  ✗ All URLs were invalid — nothing to clone\n"
+	ErrCloneMultiFailedFmt   = "  ✗ [%d/%d] %s failed: %v\n"
+)
+
+// Multi-clone exit codes.
+const (
+	ExitCloneMultiPartialFail = 1
+	ExitCloneMultiAllInvalid  = 3
+)
+
