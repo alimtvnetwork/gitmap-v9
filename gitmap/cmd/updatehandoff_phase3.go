@@ -28,13 +28,13 @@ import (
 //   - the handoff copy (gitmap-update-<pid>.exe) — locked by us
 //   - the *.exe.old backup — sometimes briefly held by AV/Explorer
 //
-// On Windows we spawn a detached cmd.exe that pings briefly (so this
-// process can exit and release its lock) and then runs the deployed
-// binary's `update-cleanup`. On Unix we just exec it inline since
-// no lock conflicts exist.
+// On Windows we launch the deployed binary directly in a hidden process
+// and let `update-cleanup` sleep briefly before removal starts, so the
+// current handoff process has time to exit and release its file lock.
+// On Unix we just exec it inline since no lock conflicts exist.
 //
-// Best-effort: any failure is silent. The user can always re-run
-// `gitmap update-cleanup` manually.
+// Best-effort cleanup remains non-fatal, but launch failures are now
+// printed to stderr so the user can see what went wrong.
 func scheduleDeployedCleanupHandoff() {
 	deployed := resolveDeployedBinaryPath()
 	if len(deployed) == 0 {
