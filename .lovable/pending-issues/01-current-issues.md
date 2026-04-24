@@ -181,3 +181,31 @@
   3. Whenever a "shortcut" fix is reported as not working, first check the user's installed binary version — stale PATH installs are the most common reason a "fixed" feature appears to regress.
   4. The update-cleanup chain (issues #09/#10) is on the critical path for getting fixes onto user machines; failures there silently block every other improvement.
 
+## 14 — `--debug-windows` flag added for self-update handoff diagnostics (FIXED v3.86.0)
+- **Status**: Fixed in v3.86.0
+- **Reported**: Follow-up to #09 / #10. Even with the cleanup-target resolution lines (`→ Cleanup target resolved via: …`, `→ Cleanup target path: …`, `→ Cleanup process started (pid=…)`), the *child* `update-cleanup` process printed almost nothing about its own environment, so when cleanup misbehaved on Windows the user could not tell which env vars, deploy path, or PID the child actually saw. There was also no way to enable richer diagnostics ad-hoc without rebuilding with `--verbose` plumbed through.
+- **Root Cause**:
+  1. Phase-3 dispatcher (`scheduleDeployedCleanupHandoff`) printed resolution + child PID, but the child cleanup process (`runUpdateCleanup`) did not echo back its self path, parent PID, env, or the GOOS it observed.
+  2. Phase-2 handoff (`launchHandoff`) had no diagnostic output at all — users could not see what argv/env was about to be passed to the handoff copy.
+  3. `--verbose` writes to a log file, which is awkward for one-off Windows debugging where the user wants console output they can paste into a bug report.
+- **Solution**:
+  1. New `--debug-windows` flag on `gitmap update` (also activated by `GITMAP_DEBUG_WINDOWS=1`).
+  2. Structured `[debug-windows]` dump printed to **stderr** at three lifecycle points:
+     - Phase 2 (`launchHandoff` in `gitmap/cmd/update.go`) — before spawning the handoff copy.
+     - Phase 3 dispatcher (`scheduleDeployedCleanupHandoff` in `gitmap/cmd/updatehandoff_phase3.go`) — wraps the entire dispatch with header/footer; per-spawn details printed by `dumpDebugWindowsHandoff` immediately before `cmd.Start()`; spawned child PID printed by `dumpDebugWindowsChildPID` immediately after.
+     - Phase 3 child (`runUpdateCleanup` in `gitmap/cmd/updatecleanup.go`) — prints the same dump from inside the deployed binary so the user sees its own view.
+  3. Flag/env propagation: `--debug-windows` is forwarded into the Phase 2 handoff copy and the Phase 3 cleanup child via **both** argv (`buildCleanupChildArgs`) and env (`buildCleanupChildEnv` sets `GITMAP_DEBUG_WINDOWS=1`). Either signal alone activates the dump, which makes the flag survive intermediate launchers that strip argv.
+  4. Env keys printed are explicit and small (`GITMAP_DEBUG_WINDOWS`, `GITMAP_UPDATE_CLEANUP_DELAY_MS`, `GITMAP_DEBUG_REPO_DETECT`, `GITMAP_REPORT_ERRORS`, `GITMAP_REPORT_ERRORS_FILE`, `PATH`, `GITMAP_DEPLOY_PATH`) so the dump never leaks unrelated secrets from the process environment.
+- **Files Affected**:
+  - `gitmap/cmd/updatedebugwindows.go` (new) — dump helpers + flag/env detection.
+  - `gitmap/cmd/updatehandoff_phase3.go` — header/footer + handoff dump + child PID dump + `buildCleanupChildArgs`/`buildCleanupChildEnv`.
+  - `gitmap/cmd/updatecleanup.go` — dump runs at the start of `runUpdateCleanup`.
+  - `gitmap/cmd/update.go` — `launchHandoff` forwards flag + env and prints Phase 2 dump.
+  - `gitmap/constants/constants_update.go` — `FlagDebugWindows`, `EnvDebugWindows`, `MsgDebugWin*` constants.
+  - `gitmap/helptext/update.md` — flag table updated.
+  - `gitmap/constants/constants.go` — version bumped to `3.86.0`.
+- **Prevention**:
+  1. Every detached spawn in the self-update flow must carry an explicit, opt-in stderr-only diagnostic mode that survives the spawn boundary via both argv and env.
+  2. Diagnostic env-key lists must be hand-curated, never `os.Environ()` in full — that would leak credentials into bug-report pastes.
+  3. Any future addition to the cleanup handoff (extra phases, extra spawns) must extend the `[debug-windows]` dump in lockstep so the trace stays complete.
+
