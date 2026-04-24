@@ -143,9 +143,11 @@ func dumpDebugWindowsNote(format string, args ...interface{}) {
 	emitDebugWindowsJSON("note", map[string]any{"message": msg})
 }
 
-// fileExists is a small wrapper used only by the dump so the boolean
-// shows up cleanly in the output.
-func fileExists(path string) bool {
+// fileExistsLoose is a small wrapper used only by the debug dump. It
+// differs from the package-level fileExists by treating directories as
+// existing too and short-circuiting on empty input, which is what the
+// debug dump wants when the path may be unset.
+func fileExistsLoose(path string) bool {
 	if len(path) == 0 {
 		return false
 	}
