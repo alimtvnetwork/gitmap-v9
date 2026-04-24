@@ -89,6 +89,8 @@ const (
 	CmdLFSCommonAlias        = "lfsc"
 	CmdReplace               = "replace"
 	CmdReplaceAlias          = "rpl"
+	CmdInject                = "inject"
+	CmdInjectAlias           = "inj"
 )
 
 // Usage header.
