@@ -1,5 +1,67 @@
 # Changelog
 
+## v3.115.0 — (2026-04-24) — Pre-build provenance stamp surfaces stale checkouts in the first lines of the build log
+
+### Why
+
+Three releases (v3.92.0 rename, v3.113.0 fsutil migration, v3.114.0 AST
+guard) have hardened the source tree against the `fileExists`
+redeclaration regression — but every fix only catches it AFTER `go build`
+runs and emits a cryptic line-number mismatch. Users on stale CI
+checkouts still spent minutes diagnosing line numbers that didn't exist
+in the source they were reading. The fix needed to move earlier in the
+pipeline: surface the exact commit + version + file fingerprints
+BEFORE the compiler is invoked, so a stale snapshot is obvious.
+
+### Changes
+
+- **`scripts/build-stamp.sh`** — bash provenance stamper. Prints:
+  - `git`: commit SHA (full + short), branch, `describe --tags --dirty`,
+    commit date, commit subject.
+  - `source`: declared `constants.Version`, plus a `sha256:<12-hex>` +
+    line-count fingerprint of `constants.go`, `updaterepo.go`,
+    `updatedebugwindows.go`.
+  - `guards`: a redeclaration-risk pre-check that grep-scans both
+    cmd/ files for local `func fileExists` / `func fileExistsLoose`
+    declarations. If both files declare one, the script either prints
+    a FAIL line (default mode) or `exit 1` (`--strict`) — predicting
+    the build failure before `go build` runs and pointing the user at
+    `git pull origin main`.
+  - All probes fall back to `(unknown)` so the stamp itself never
+    blocks a build (shallow clones, tarball builds, missing git).
+- **`scripts/build-stamp.ps1`** — PowerShell companion with identical
+  semantics (`-Strict` switch, `Get-FileHash` + `Select-String`
+  equivalents) for Windows local builds.
+- **`run.sh`** + **`run.ps1`** — invoke the stamp script immediately
+  before `go build`. Wrapped in `|| true` / `try`/`catch` so a stamp
+  bug never breaks a working local build.
+- **`.github/workflows/ci.yml`** — new "Pre-build provenance stamp
+  (stale-checkout guard)" step in the `build` matrix job, runs in
+  `--strict` mode so CI fails fast on a stale checkout instead of
+  burning minutes on a doomed Go compilation.
+- Bumped `constants.Version` to `3.115.0`.
+
+### Reading the stamp
+
+A healthy build log starts with:
+
+    === gitmap build-stamp v1.0.0 ====================================
+    git
+      commit                  <full SHA>
+      short                   <10-char SHA>
+      branch                  main
+      describe                v3.115.0
+    source
+      declared-version        3.115.0
+    guards
+      redecl-risk-check       ok (no local fileExists* in cmd/ ...)
+    =====================================================================
+
+If the `commit` line does not match the SHA you expected to build, or
+the `declared-version` is older than the version in your local
+`CHANGELOG.md`, **stop** — you are building a stale snapshot. Run
+`git pull origin main` and re-run.
+
 ## v3.114.0 — (2026-04-24) — Source-level AST guard: `updatedebugwindows.go` must call `fsutil.FileOrDirExists` and declare zero local `fileExists*` helpers
 
 ### Why a second test

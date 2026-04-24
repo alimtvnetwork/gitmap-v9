@@ -8,6 +8,18 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v3.115.0",
+    date: "2026-04-24",
+    subtitle: "Pre-build provenance stamp surfaces stale checkouts in the first lines of the build log",
+    items: [
+      "Why: three releases (v3.92.0 rename, v3.113.0 fsutil migration, v3.114.0 AST guard) have hardened the source tree against the `fileExists` redeclaration regression — but every fix only catches it AFTER `go build` runs and emits a cryptic line-number mismatch. Users on stale CI checkouts still spent minutes diagnosing line numbers that didn't exist in the source they were reading. The fix needed to move earlier in the pipeline.",
+      "New `scripts/build-stamp.sh` (bash) prints: git commit SHA (full + short), branch, `describe --tags --dirty`, commit date/subject; declared `constants.Version`; sha256:<12-hex> + line-count fingerprint of `constants.go`, `updaterepo.go`, `updatedebugwindows.go`; and a redeclaration-risk pre-check that grep-scans both cmd/ files for local `func fileExists*` declarations. `--strict` mode escalates the redecl check to `exit 1`, predicting the build failure before `go build` runs.",
+      "New `scripts/build-stamp.ps1` (PowerShell) is the Windows companion with identical semantics — `-Strict` switch, `Get-FileHash` + `Select-String` equivalents. All probes fall back to `(unknown)` so the stamp itself never blocks a build (shallow clones, tarball builds, missing git).",
+      "`run.sh` and `run.ps1` now invoke the stamp script immediately before `go build`. Wrapped in `|| true` / try-catch so a stamp bug never breaks a working local build. `.github/workflows/ci.yml` runs the stamp in `--strict` mode in the build matrix job, so CI fails fast on a stale checkout instead of burning minutes on a doomed Go compilation.",
+      "Reading the stamp: if the `commit` line does not match the SHA you expected to build, or `declared-version` is older than your local CHANGELOG.md, stop — you are building a stale snapshot. Run `git pull origin main` and re-run. Bumped `constants.Version` to `3.115.0`.",
+    ],
+  },
+  {
     version: "v3.114.0",
     date: "2026-04-24",
     subtitle: "Source-level AST guard: `updatedebugwindows.go` must call `fsutil.FileOrDirExists` and declare zero local `fileExists*` helpers",
