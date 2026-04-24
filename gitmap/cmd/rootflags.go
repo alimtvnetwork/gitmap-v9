@@ -48,16 +48,17 @@ func resolveScanDir(fs *flag.FlagSet) string {
 // Exposing the full positional slice (Positional) lets runClone detect
 // the multi-URL invocation form documented in spec/01-app/104-clone-multi.md.
 type CloneFlags struct {
-	Source      string
-	FolderName  string
-	TargetDir   string
-	SSHKeyName  string
-	Positional  []string
-	SafePull    bool
-	GHDesktop   bool
-	NoReplace   bool
-	Verbose     bool
-	Audit       bool
+	Source         string
+	FolderName     string
+	TargetDir      string
+	SSHKeyName     string
+	Positional     []string
+	SafePull       bool
+	GHDesktop      bool
+	NoReplace      bool
+	Verbose        bool
+	Audit          bool
+	MaxConcurrency int
 }
 
 // parseCloneFlags parses flags for the clone command.
@@ -69,21 +70,24 @@ func parseCloneFlags(args []string) CloneFlags {
 	verboseFlag := fs.Bool("verbose", false, constants.FlagDescVerbose)
 	noReplaceFlag := fs.Bool("no-replace", false, constants.FlagDescCloneNoReplace)
 	auditFlag := fs.Bool(constants.CloneFlagAudit, false, constants.FlagDescCloneAudit)
+	maxConcFlag := fs.Int(constants.CloneFlagMaxConcurrency,
+		constants.CloneDefaultMaxConcurrency, constants.FlagDescCloneMaxConcurrency)
 	sshKeyFlag := fs.String("ssh-key", "", "SSH key name for clone")
 	fs.StringVar(sshKeyFlag, "K", "", "SSH key name (short)")
 	fs.Parse(args)
 
 	return CloneFlags{
-		Source:     resolveCloneSource(fs),
-		FolderName: resolveCloneFolderName(fs),
-		TargetDir:  *targetFlag,
-		SSHKeyName: *sshKeyFlag,
-		Positional: fs.Args(),
-		SafePull:   *safePullFlag,
-		GHDesktop:  *ghDesktopFlag,
-		NoReplace:  *noReplaceFlag,
-		Verbose:    *verboseFlag,
-		Audit:      *auditFlag,
+		Source:         resolveCloneSource(fs),
+		FolderName:     resolveCloneFolderName(fs),
+		TargetDir:      *targetFlag,
+		SSHKeyName:     *sshKeyFlag,
+		Positional:     fs.Args(),
+		SafePull:       *safePullFlag,
+		GHDesktop:      *ghDesktopFlag,
+		NoReplace:      *noReplaceFlag,
+		Verbose:        *verboseFlag,
+		Audit:          *auditFlag,
+		MaxConcurrency: *maxConcFlag,
 	}
 }
 
