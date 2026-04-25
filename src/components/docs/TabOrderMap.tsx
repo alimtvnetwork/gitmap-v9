@@ -125,10 +125,13 @@ export const getTabOrder = (root: ParentNode = document.body): HTMLElement[] => 
 const TabOrderMap = () => {
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<FocusEntry[]>([]);
+  const [focusedStep, setFocusedStep] = useState<number | null>(null);
   const selfRef = useRef<HTMLElement | null>(null);
+  const elementsRef = useRef<HTMLElement[]>([]);
 
   const refresh = useCallback(() => {
     const els = getTabOrder(document.body);
+    elementsRef.current = els;
     const list: FocusEntry[] = els.map((el, idx) => ({
       step: idx + 1,
       label: labelFor(el),
@@ -138,6 +141,10 @@ const TabOrderMap = () => {
       isSelf: !!selfRef.current && selfRef.current.contains(el),
     }));
     setEntries(list);
+    // Re-resolve focused step against the newly-collected element list.
+    const active = document.activeElement as HTMLElement | null;
+    const idx = active ? els.indexOf(active) : -1;
+    setFocusedStep(idx >= 0 ? idx + 1 : null);
   }, []);
 
   // Recompute on open + on DOM mutations + on resize while open.
@@ -165,6 +172,38 @@ const TabOrderMap = () => {
       window.removeEventListener("resize", schedule);
     };
   }, [open, refresh]);
+
+  // Track focus globally while the panel is open. Uses focusin/focusout
+  // (which bubble, unlike focus/blur) so we catch every change.
+  useEffect(() => {
+    if (!open) return;
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) {
+        setFocusedStep(null);
+        return;
+      }
+      const idx = elementsRef.current.indexOf(target);
+      setFocusedStep(idx >= 0 ? idx + 1 : null);
+    };
+    const onFocusOut = () => {
+      // Defer so the next focusin (if any) wins this frame.
+      requestAnimationFrame(() => {
+        const active = document.activeElement as HTMLElement | null;
+        if (!active || active === document.body) {
+          setFocusedStep(null);
+        }
+      });
+    };
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    // Seed with whatever currently has focus.
+    onFocusIn({ target: document.activeElement } as unknown as FocusEvent);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+    };
+  }, [open]);
 
   // Group entries by section for readability while keeping global numbering.
   const grouped = useMemo(() => {
