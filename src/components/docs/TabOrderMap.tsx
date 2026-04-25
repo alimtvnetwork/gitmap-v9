@@ -388,7 +388,12 @@ const TabOrderMap = () => {
                                     </span>
                                   )}
                                 </div>
-                                <div className="font-mono text-[11px] text-muted-foreground">
+                                {e.sublabel && (
+                                  <div className="font-sans text-xs text-muted-foreground italic mt-0.5 line-clamp-2">
+                                    {e.sublabel}
+                                  </div>
+                                )}
+                                <div className="font-mono text-[11px] text-muted-foreground/70 mt-0.5">
                                   &lt;{e.tag}&gt; · tabindex={e.tabIndex}
                                 </div>
                               </div>
