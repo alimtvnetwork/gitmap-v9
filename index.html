@@ -20,10 +20,12 @@
   <body>
     <script>
       // Restore persisted theme before paint to avoid flash-of-wrong-theme.
+      // Falls back to the OS-level prefers-color-scheme when no saved value exists.
       (function () {
         try {
           var saved = localStorage.getItem('gitmap-theme');
-          var useDark = saved ? saved === 'dark' : true;
+          var prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+          var useDark = saved ? saved === 'dark' : !prefersLight;
           document.documentElement.classList.toggle('dark', useDark);
           document.documentElement.classList.toggle('light', !useDark);
         } catch (e) { /* localStorage may be blocked; fall back to default */ }
