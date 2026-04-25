@@ -202,12 +202,21 @@
   .text-shimmer,
   .badge-pulse::before,
   .card-sheen::after,
-  .cta-glow::before {
+  .cta-glow::before,
+  .animate-pulse,
+  .animate-spin,
+  .animate-bounce,
+  .animate-ping,
+  [class*="animate-fade"],
+  [class*="animate-scale"],
+  [class*="animate-slide"],
+  [class*="animate-accordion"] {
     animation: none !important;
     transition: none !important;
   }
   .reveal > * {
     opacity: 1 !important;
+    animation: none !important;
   }
 
   /* docs-h3 padding shift on hover */
