@@ -50,21 +50,68 @@ const isVisible = (el: HTMLElement): boolean => {
   return true;
 };
 
-/** Best-effort accessible name. Mirrors what a screen reader would announce. */
+/** Resolve a space-separated id-list reference (aria-labelledby / aria-describedby). */
+const resolveIdRefs = (ids: string | null): string => {
+  if (!ids) return "";
+  return ids
+    .split(/\s+/)
+    .map((id) => document.getElementById(id)?.textContent?.trim() ?? "")
+    .filter(Boolean)
+    .join(" ");
+};
+
+const truncate = (s: string, max = 80): string =>
+  s.length > max ? `${s.slice(0, max - 3)}…` : s;
+
+/**
+ * Best-effort accessible name. Mirrors the ARIA name calculation order:
+ * aria-label → aria-labelledby → associated <label> → title → text content.
+ */
 const labelFor = (el: HTMLElement): string => {
   const aria = el.getAttribute("aria-label");
-  if (aria) return aria.trim();
-  const labelledby = el.getAttribute("aria-labelledby");
-  if (labelledby) {
-    const ref = document.getElementById(labelledby);
-    if (ref?.textContent) return ref.textContent.trim();
+  if (aria) return truncate(aria.trim());
+
+  const labelledby = resolveIdRefs(el.getAttribute("aria-labelledby"));
+  if (labelledby) return truncate(labelledby.replace(/\s+/g, " "));
+
+  // <label for="..."> or wrapping <label>
+  if (
+    el instanceof HTMLInputElement ||
+    el instanceof HTMLSelectElement ||
+    el instanceof HTMLTextAreaElement
+  ) {
+    if (el.labels && el.labels.length > 0) {
+      const text = Array.from(el.labels)
+        .map((l) => l.textContent?.trim() ?? "")
+        .filter(Boolean)
+        .join(" ");
+      if (text) return truncate(text.replace(/\s+/g, " "));
+    }
   }
+
   const title = el.getAttribute("title");
-  if (title) return title.trim();
+  if (title) return truncate(title.trim());
+
   const text = (el.textContent ?? "").replace(/\s+/g, " ").trim();
-  if (text) return text.length > 80 ? `${text.slice(0, 77)}…` : text;
+  if (text) return truncate(text);
+
   if (el instanceof HTMLInputElement) return `${el.type} input`;
   return el.tagName.toLowerCase();
+};
+
+/**
+ * Accessible description — what aria-describedby / aria-description would
+ * make a screen reader announce *after* the name. Returned separately so
+ * callers can render it as a sublabel without colliding with the name.
+ */
+const descriptionFor = (el: HTMLElement): string | undefined => {
+  const direct = el.getAttribute("aria-description");
+  if (direct?.trim()) return truncate(direct.trim(), 120);
+
+  const referenced = resolveIdRefs(el.getAttribute("aria-describedby"));
+  if (referenced) return truncate(referenced.replace(/\s+/g, " "), 120);
+
+  return undefined;
 };
 
 /** Closest meaningful landmark for grouping in the list. */
