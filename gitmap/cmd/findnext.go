@@ -35,7 +35,7 @@ func runFindNext(args []string) {
 
 	rows, err := db.FindNext(scanFolderID)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		fmt.Fprintf(os.Stderr, constants.ErrFindNextQueryFmt, err)
 		os.Exit(1)
 	}
 
