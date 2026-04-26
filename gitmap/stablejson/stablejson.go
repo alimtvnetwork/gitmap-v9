@@ -67,24 +67,60 @@ type Field struct {
 	Value any
 }
 
-// WriteArray writes `items` as a JSON array of objects to w. Each
-// inner []Field is one object; field order within an object follows
-// the slice order. Empty `items` writes the literal `[]\n` so jq
-// pipelines that do `length` never have to special-case `null`.
-//
-// Indentation matches `json.Encoder.SetIndent("", "  ")` so callers
-// migrating from the standard encoder get byte-identical output and
-// existing golden fixtures keep passing without regeneration.
+// WriteArray writes `items` as a pretty-printed JSON array of
+// objects with 2-space indentation. Equivalent to WriteArrayIndent
+// with indent="  " — kept as a separate entry point so existing
+// callers (and the byte-compat contract test against
+// json.Encoder.SetIndent("", "  ")) continue to pass unchanged.
 func WriteArray(w io.Writer, items [][]Field) error {
+	return WriteArrayIndent(w, items, "  ")
+}
+
+// WriteArrayIndent writes `items` as a JSON array of objects with
+// the caller-controlled per-level `indent` string. Two modes:
+//
+//   - indent == ""   → minified single-line output:
+//                      `[{"k":v,"k2":v2},{"k":v}]\n`
+//                      No inter-token whitespace, one trailing `\n`.
+//   - indent != ""   → pretty-printed multi-line output. The string
+//                      is used verbatim as the per-level prefix —
+//                      pass `"  "` for the encoding/json default,
+//                      `"\t"` for tabs, `"    "` for four spaces.
+//                      Each value line gets `indent` (level 1) and
+//                      each object key line gets `indent+indent`
+//                      (level 2), matching json.Encoder behavior.
+//
+// Empty `items` always writes `[]\n` regardless of indent — this
+// matches WriteArray's pre-existing contract that downstream
+// consumers (jq `length`, dashboards) depend on.
+//
+// Field order within each object follows the slice order verbatim
+// in BOTH modes — the indent flag controls only whitespace, never
+// key ordering. This is the headline guarantee of the package and
+// what makes a `--json-indent` CLI flag safe: the bytes change but
+// the semantic key sequence is byte-locked.
+func WriteArrayIndent(w io.Writer, items [][]Field, indent string) error {
 	if len(items) == 0 {
 		_, err := io.WriteString(w, "[]\n")
 
 		return err
 	}
 	var buf bytes.Buffer
+	if indent == "" {
+
+		return writeArrayMinified(w, &buf, items)
+	}
+
+	return writeArrayPretty(w, &buf, items, indent)
+}
+
+// writeArrayPretty emits the multi-line indented form. Split out so
+// WriteArrayIndent stays under the 15-line code-style budget and
+// the minified path doesn't pay for branch noise on every line.
+func writeArrayPretty(w io.Writer, buf *bytes.Buffer, items [][]Field, indent string) error {
 	buf.WriteString("[\n")
 	for i, obj := range items {
-		if err := writeObject(&buf, obj); err != nil {
+		if err := writeObject(buf, obj, indent); err != nil {
 
 			return err
 		}
@@ -92,6 +128,28 @@ func WriteArray(w io.Writer, items [][]Field) error {
 			buf.WriteString(",\n")
 		} else {
 			buf.WriteString("\n")
+		}
+	}
+	buf.WriteString("]\n")
+	_, err := w.Write(buf.Bytes())
+
+	return err
+}
+
+// writeArrayMinified emits `[{...},{...}]\n` on a single line. The
+// per-object encoder is the same one JSONL uses, ensuring a value
+// rendered minified inside an array is byte-identical to the same
+// value rendered as one JSONL line — important for hash-based
+// integrity checks that re-encode and compare.
+func writeArrayMinified(w io.Writer, buf *bytes.Buffer, items [][]Field) error {
+	buf.WriteByte('[')
+	for i, obj := range items {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+		if err := writeCompactObject(buf, obj); err != nil {
+
+			return err
 		}
 	}
 	buf.WriteString("]\n")
