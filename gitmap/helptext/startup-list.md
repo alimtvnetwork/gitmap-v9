@@ -74,15 +74,10 @@ the `exec` field is the space-joined `ProgramArguments` array (or
 ]
 ```
 
-With `--json-indent=0` the same output collapses to one line:
-
-```
-[{"name":"gitmap-sync-watcher","path":"/home/user/.config/autostart/gitmap-sync-watcher.desktop","exec":"/usr/local/bin/gitmap watch ~/projects"}]
-```
-
-Key order is identical at every indent — `--json-indent` controls
-whitespace ONLY. The empty-list `[]\n` contract holds regardless
-of indent, so `jq length` keeps working across all settings.
+With `--json-indent=0` the same output collapses to one minified
+line. Key order is identical at every indent — the flag controls
+whitespace ONLY. The empty-list `[]\n` contract holds across all
+indent settings, so `jq length` keeps working.
 
 ### `--format=jsonl`
 
