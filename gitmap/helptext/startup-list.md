@@ -35,11 +35,8 @@ have to open every unrelated file in the directory.
 | `--json-indent` | `2` | Spaces per indent level for `--format=json`. `0` = minified single line. Range: 0..8. Ignored for non-json formats. |
 
 `table` (alias: `terminal`) is the legacy human-readable rendering.
-Unknown `--format` values and out-of-range `--json-indent` values
-both exit with code 2 so scripts catch typos immediately. The
-`--json-indent` value is parsed and validated even when the format
-ignores it, so a typo like `--json-indent=99` fails fast regardless
-of which format you pair it with.
+Bad `--format` values and out-of-range `--json-indent` both exit 2.
+`--json-indent` is validated even when the format ignores it.
 
 ## Output formats
 
