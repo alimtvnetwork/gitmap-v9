@@ -63,6 +63,7 @@ func executeScan(dir string, cfg model.Config, outFile string, ghDesktop, openFo
 	}
 
 	progress := newScanProgressRenderer(quiet)
+	errCollector := newScanCollector(reportErrors)
 	var repos []scanner.RepoInfo
 	var err error
 	bench.Phase("scan.walk", func() {
@@ -71,6 +72,7 @@ func executeScan(dir string, cfg model.Config, outFile string, ghDesktop, openFo
 			Workers:     workers,
 			MaxDepth:    maxDepth,
 			Progress:    progress.Callback(),
+			OnDirError:  scanDirErrorCallback(errCollector),
 		})
 	})
 	if err != nil {
@@ -105,6 +107,7 @@ func executeScan(dir string, cfg model.Config, outFile string, ghDesktop, openFo
 	// the project-detection / desktop-sync phases below. Drained
 	// before the "Done" banner unless --no-probe-wait was passed.
 	probeRunner := startBackgroundProbe(records, probeOpts, quiet)
+	installProbeFailureHook(probeRunner, errCollector)
 	fmt.Print(constants.MsgSectionProjects)
 	var detected []detector.DetectionResult
 	bench.Phase("scan.detectProjects", func() {
@@ -133,6 +136,7 @@ func executeScan(dir string, cfg model.Config, outFile string, ghDesktop, openFo
 	bench.Phase("scan.backgroundProbeWait", func() {
 		drainBackgroundProbe(probeRunner, probeOpts, quiet)
 	})
+	finalizeErrorReport(errCollector, quiet)
 	fmt.Print(constants.MsgSectionDone)
 
 	// Mark scan task as completed after all steps succeed.
