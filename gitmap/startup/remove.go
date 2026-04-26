@@ -93,25 +93,8 @@ func RemoveWithOptions(name string, opts RemoveOptions) (RemoveResult, error) {
 	return removeIfManaged(full, opts)
 }
 
-// removeWindows tries BOTH backends in order: registry first, then
-// startup-folder. The first one that returns a non-NoOp result wins
-// (we don't want to silently delete from both even if both
-// somehow have the same-named entry — Add prevents that scenario,
-// but defense-in-depth). Returns NoOp only if BOTH backends report
-// no entry by that name.
-func removeWindows(clean string, opts RemoveOptions) (RemoveResult, error) {
-	res, err := removeWindowsRegistry(clean, opts)
-	if err != nil {
-
-		return res, err
-	}
-	if res.Status != RemoveNoOp {
-
-		return res, nil
-	}
-
-	return removeWindowsStartupFolder(clean, opts)
-}
+// removeWindows lives in winbackend.go (kept with the other
+// Windows dispatch helpers).
 
 // normalizeName strips an optional platform extension and surrounding
 // whitespace so `Remove("foo")`, `Remove("foo.desktop")`/`("foo.plist")`,
