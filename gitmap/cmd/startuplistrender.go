@@ -1,28 +1,17 @@
 package cmd
 
-// Renderers for `gitmap startup-list --format=...`. Split out from
-// startup.go so the per-format encoder logic doesn't push the parent
-// file over the 200-line code-style budget. Three formats supported:
+// Renderers for `gitmap startup-list --format=...`. Four formats:
+// table (default human-readable), json (pretty array, indent
+// configurable via --json-indent), jsonl (one minified object per
+// line), csv (RFC4180 with header). All encoders take an io.Writer
+// so contract tests can capture bytes into a buffer; the CLI
+// dispatcher passes os.Stdout.
 //
-//   - table (default): human-readable, identical to the pre-flag
-//     output so existing users see no change.
-//   - json: array of {name, path, exec} objects. Empty list renders
-//     as `[]` (NOT `null`) so jq-based pipelines never have to
-//     special-case missing data.
-//   - csv: RFC4180 via encoding/csv. Header row is always written so
-//     downstream tools can self-discover columns. Empty list still
-//     emits the header so spreadsheet imports get consistent shape.
-//
-// All three encoders (json, csv, table) take an io.Writer rather
-// than hardcoding os.Stdout so contract tests can capture the bytes
-// into a buffer for byte-exact comparison against committed golden
-// fixtures or shape assertions. The CLI dispatcher passes os.Stdout.
-//
-// JSON encoding goes through gitmap/stablejson rather than
+// JSON / JSONL encoding goes through gitmap/stablejson rather than
 // encoding/json directly: stablejson builds each object key-by-key
 // in caller-declared order and CANNOT be reordered by a future Go
-// release or encoding/json/v2. The output is byte-identical to the
-// previous Encoder-based code, so the existing golden fixtures pass
+// release. Pretty 2-space output is byte-identical to the legacy
+// Encoder.SetIndent("", "  "), so existing golden fixtures pass
 // unchanged. See gitmap/stablejson/stablejson.go for full rationale.
 
 import (
