@@ -47,11 +47,14 @@ func writeCSVRows(cw *csv.Writer, records []model.ScanRecord) error {
 	return cw.Error()
 }
 
-// writeCSVRow converts a single record to a CSV row.
+// writeCSVRow converts a single record to a CSV row. Depth is
+// rendered as a base-10 integer in the trailing column so it sorts
+// numerically when the CSV is opened in a spreadsheet.
 func writeCSVRow(cw *csv.Writer, r model.ScanRecord) error {
 	row := []string{
 		r.RepoName, r.HTTPSUrl, r.SSHUrl, r.Branch, r.BranchSource,
 		r.RelativePath, r.AbsolutePath, r.CloneInstruction, r.Notes,
+		strconv.Itoa(r.Depth),
 	}
 
 	return cw.Write(row)
