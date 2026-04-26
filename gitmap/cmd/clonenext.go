@@ -49,6 +49,11 @@ func runCloneNext(args []string) {
 	// but has git subdirs one level down) triggers the multi-repo
 	// dispatcher. See shouldRunBatch for the priority order.
 	if shouldRunBatch(cnFlags, currentWorkingDir()) {
+		if cnFlags.DryRun {
+			previewDryRunBatch(cnFlags.CSVPath, cnFlags.All)
+
+			return
+		}
 		runCloneNextBatch(cnFlags.CSVPath, cnFlags.All, cnFlags.MaxConcurrency, cnFlags.NoProgress, cnFlags.ReportErrors)
 
 		return
@@ -173,6 +178,14 @@ func runCloneNext(args []string) {
 			}
 			fmt.Printf(constants.MsgCloneNextCreated, targetName)
 		}
+	}
+
+	// Dry-run gate: print the planned clone command and exit BEFORE
+	// any side effect (clone, removal, DB write, GH Desktop, VS Code,
+	// shell handoff). Placed after target/folder resolution so the
+	// previewed url+dest match exactly what a real run would invoke.
+	if cnFlags.DryRun {
+		printCloneNextDryRun(targetURL, targetPath)
 	}
 
 	if cnFlags.Force {

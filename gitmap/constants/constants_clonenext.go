@@ -106,4 +106,26 @@ const (
 	// is always printed.
 	FlagCloneNextNoProgress     = "no-progress"
 	FlagDescCloneNextNoProgress = "Suppress live per-repo progress lines (final summary still prints)"
+
+	// FlagCloneNextDryRun, when set, prints every `git clone` command
+	// `gitmap cn` would execute (single-repo AND batch modes) and
+	// EXITS before any side-effect runs: no clone, no folder removal,
+	// no GitHub Desktop registration, no VS Code launch, no shell
+	// handoff, no DB version-history write. Intended for previewing
+	// what `cn` will do — especially handy after `--all` / `--csv`
+	// expansions that fan out across many repos.
+	FlagCloneNextDryRun     = "dry-run"
+	FlagDescCloneNextDryRun = "Print the git clone commands that would run, then exit (no side effects)"
+
+	// MsgCloneNextDryRunCmd is the per-clone preview line. Format:
+	// "  → <gitBin> clone <url> <dest>" — kept terse so a long --all
+	// run stays scannable, prefixed with the same arrow other cn
+	// stage messages use for visual consistency.
+	MsgCloneNextDryRunCmd = "  → %s %s %s %s\n"
+	// MsgCloneNextDryRunHeader prints once at the start of dry-run
+	// mode so users can't miss that NOTHING will actually happen.
+	MsgCloneNextDryRunHeader = "🔍 dry-run mode — printing planned clone commands, no changes will be made:\n"
+	// MsgCloneNextDryRunFooter summarizes the dry-run after all
+	// previewed commands print. Includes the count for quick sanity.
+	MsgCloneNextDryRunFooter = "\n✓ dry-run complete — %d clone command(s) previewed. Re-run without --dry-run to execute.\n"
 )
