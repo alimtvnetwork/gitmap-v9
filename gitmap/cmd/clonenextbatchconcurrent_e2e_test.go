@@ -9,8 +9,11 @@ package cmd
 // sibling clonenextbatchconcurrent_e2e_csv_test.go file.
 
 import (
+	"fmt"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // TestE2E_BatchConcurrency_DeterministicOrdering proves that under
