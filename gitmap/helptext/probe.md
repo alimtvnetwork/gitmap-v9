@@ -9,7 +9,17 @@ gitmap probe                   # probe every repo in the database
 gitmap probe --all             # explicit form of the above
 gitmap probe <repo-path>       # probe a single repo by absolute path
 gitmap probe --all --json      # emit a JSON array (CI-friendly)
+gitmap probe --all --workers 3 # raise the worker pool (cap = 3, default = 2)
 ```
+
+## Concurrency
+
+Probes run through a small capped worker pool. Two workers by default
+keeps GitHub-style hosts comfortable; the cap is **3** because beyond
+that providers start returning HTTP 429 / `error: 429` from
+`ls-remote` more often than not. `--workers 0` is rejected; values
+above 3 are clamped to 3 with a one-line stderr notice. JSON output
+order is always input order, regardless of completion order.
 
 ## What it does
 

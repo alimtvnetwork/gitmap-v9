@@ -1,6 +1,6 @@
 ---
 name: version-probe
-description: Hybrid HEAD-then-clone version probe (Phase 2.3, v3.8.0). gitmap probe [path|--all] reads VersionProbe table; scan now auto-tags repos with ScanFolderId.
+description: Hybrid HEAD-then-clone version probe (v3.8.0+). v3.134.0 adds a capped worker pool to `gitmap probe` (default 2, cap 3) via `--workers N`.
 type: feature
 ---
 # Version Probe (Phase 2.3, v3.8.0)
@@ -42,9 +42,11 @@ The shallow-clone fallback is **treeless** (`--filter=blob:none`) and **checkout
 ## CLI surface
 
 ```
-gitmap probe                   # probe every repo in the database
+gitmap probe                   # probe every repo in the database (2 workers)
 gitmap probe --all             # explicit form of the above
 gitmap probe E:\src\my-repo    # probe a single repo by path
+gitmap probe --all --json      # JSON array, input order preserved
+gitmap probe --all --workers 3 # raise the worker pool (cap = 3)
 ```
 
 Per-repo line format:
@@ -54,15 +56,32 @@ Per-repo line format:
 
 Final summary: `✓ Probe complete: <available> available, <unchanged> unchanged, <failed> failed.`
 
-## Phase 2.5 readiness
+## Foreground worker pool (v3.134.0)
 
-The current loop is sequential. Phase 2.5 (parallel `gitmap pull`) will reuse `probe.RunOne` from a worker pool — `probe.Result` is already a value type with no shared state, so no refactor needed.
+`gitmap probe` runs through a capped worker pool:
+
+- Default `--workers 2` — sweet spot for residential bandwidth.
+- Hard cap of 3 (`constants.ProbeMaxWorkers`); higher values clamp with a
+  one-line stderr notice.
+- Values < 1 are rejected at parse time.
+- JSON output preserves input order regardless of completion order
+  (each worker writes to its own pre-allocated slot in the entries
+  slice). Human progress lines print as workers complete.
+- Counter updates and the per-line print share a single `counterMu` so
+  totals stay coherent and stdout lines never interleave mid-print.
+
+The background runner used by `scan` (`probe.BackgroundRunner`) is
+unchanged and still defaults to 3 workers — its job pattern (long-lived,
+fire-and-forget) tolerates more parallelism than the foreground command.
 
 ## Files
 
 - `gitmap/probe/probe.go` — `RunOne`, `tryLsRemote`, `parseFirstTag`, `parseSemverInt`, `Result.AsModel`
 - `gitmap/probe/clone.go` — `tryShallowClone`, `summarize`
+- `gitmap/probe/background.go` — `BackgroundRunner` used by `scan` (independent of foreground pool)
 - `gitmap/store/version_probe.go` — DB methods
-- `gitmap/cmd/probe.go` — `runProbe` + helpers (all under 15-line limit)
-- `gitmap/cmd/scan.go` — `tagReposWithScanFolder` helper added
-- `gitmap/constants/constants_probe.go` — SQL, error messages, CLI tokens
+- `gitmap/cmd/probe.go` — dispatcher + `runProbePool` / `probeWorker`
+- `gitmap/cmd/probeflags.go` — `parseProbeArgs`, `--workers` parsing + clamp
+- `gitmap/cmd/probereport.go` — `executeOneProbe`, JSON shaping, `tallyProbe`
+- `gitmap/cmd/scan.go` — `tagReposWithScanFolder` helper
+- `gitmap/constants/constants_probe.go` — SQL, error messages, CLI tokens, `ProbeDefaultWorkers=2`, `ProbeMaxWorkers=3`

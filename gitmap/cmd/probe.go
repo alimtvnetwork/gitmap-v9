@@ -1,66 +1,64 @@
 package cmd
 
+// probe.go — `gitmap probe` dispatcher and capped worker pool.
+//
+// JSON shaping, persistence, URL preference, and the per-repo summary
+// line live in probereport.go. Flag parsing lives in probeflags.go.
+// This file owns just two responsibilities:
+//
+//  1. Top-level dispatch: parse flags, resolve targets, hand off.
+//  2. Fan-out: stand up an opts.workers-sized pool, slot results back
+//     into input order, and serialise counter updates through one mutex.
+
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/model"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/probe"
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/store"
 )
 
-// probeJSONEntry is a single repo-level result emitted under `--json`.
-// Embeds the result + repo identity so a CI consumer can join on either.
-type probeJSONEntry struct {
-	RepoID         int64  `json:"repoId"`
-	Slug           string `json:"slug"`
-	AbsolutePath   string `json:"absolutePath"`
-	NextVersionTag string `json:"nextVersionTag"`
-	NextVersionNum int64  `json:"nextVersionNum"`
-	Method         string `json:"method"`
-	IsAvailable    bool   `json:"isAvailable"`
-	Error          string `json:"error,omitempty"`
-}
-
-// runProbe dispatches `gitmap probe [<repo-path>|--all] [--json]`. Phase 2.5
-// will replace the sequential loop with a parallel worker pool.
+// runProbe dispatches `gitmap probe [<repo-path>|--all] [--json] [--workers N]`.
+// The probe pool is capped at constants.ProbeMaxWorkers (default 2) to
+// stay under provider rate limits.
 func runProbe(args []string) {
 	checkHelp("probe", args)
-
-	jsonOut, positional := splitProbeArgs(args)
+	opts := mustParseProbeArgs(args)
 
 	db := openSfDB()
 	defer db.Close()
 
-	targets, err := resolveProbeTargets(db, positional)
+	targets := mustResolveProbeTargets(db, opts.rest)
+	if len(targets) == 0 {
+		emitProbeEmpty(opts.jsonOut)
+		return
+	}
+	probeAndReport(db, targets, opts)
+}
+
+// mustParseProbeArgs is a fatal wrapper around parseProbeArgs.
+func mustParseProbeArgs(args []string) probeOptions {
+	opts, err := parseProbeArgs(args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	if len(targets) == 0 {
-		emitProbeEmpty(jsonOut)
-		return
-	}
 
-	probeAndReport(db, targets, jsonOut)
+	return opts
 }
 
-// splitProbeArgs separates --json from positional args. Order-agnostic.
-func splitProbeArgs(args []string) (bool, []string) {
-	jsonOut := false
-	rest := make([]string, 0, len(args))
-	for _, a := range args {
-		if a == constants.ProbeFlagJSON {
-			jsonOut = true
-			continue
-		}
-		rest = append(rest, a)
+// mustResolveProbeTargets is a fatal wrapper around resolveProbeTargets.
+func mustResolveProbeTargets(db *store.DB, rest []string) []model.ScanRecord {
+	targets, err := resolveProbeTargets(db, rest)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 
-	return jsonOut, rest
+	return targets
 }
 
 // emitProbeEmpty handles the "no targets" case in either output mode.
@@ -94,109 +92,66 @@ func resolveProbeTargets(db *store.DB, args []string) ([]model.ScanRecord, error
 	return matches, nil
 }
 
-// probeAndReport executes RunOne for every target, persists results, and
-// emits either the human summary or a JSON array depending on jsonOut.
-func probeAndReport(db *store.DB, targets []model.ScanRecord, jsonOut bool) {
-	if !jsonOut {
+// probeAndReport executes the probe across opts.workers goroutines,
+// then emits either the human summary or a JSON array.
+func probeAndReport(db *store.DB, targets []model.ScanRecord, opts probeOptions) {
+	if !opts.jsonOut {
 		fmt.Printf(constants.MsgProbeStartFmt, len(targets))
 	}
 
-	entries, available, unchanged, failed := runProbeLoop(db, targets, jsonOut)
+	entries, available, unchanged, failed := runProbePool(db, targets, opts)
 
-	if jsonOut {
+	if opts.jsonOut {
 		emitProbeJSON(entries)
 		return
 	}
 	fmt.Printf(constants.MsgProbeDoneFmt, available, unchanged, failed)
 }
 
-// runProbeLoop executes the probe per target and tallies counters. When
-// jsonOut is true the per-line summaries are suppressed and entries are
-// collected for a single JSON dump at the end.
-func runProbeLoop(db *store.DB, targets []model.ScanRecord, jsonOut bool) ([]probeJSONEntry, int, int, int) {
-	entries := make([]probeJSONEntry, 0, len(targets))
+// probeJob is a single unit of work for the probe pool.
+type probeJob struct {
+	idx  int
+	repo model.ScanRecord
+}
+
+// runProbePool fans the targets across opts.workers goroutines. Entries
+// are slotted back into input order so the JSON output is deterministic
+// regardless of completion order. Per-repo human progress lines print as
+// workers finish (matches the cloner pattern); the trailing summary
+// totals are guarded by counterMu so concurrent tallies cannot lose
+// updates.
+func runProbePool(db *store.DB, targets []model.ScanRecord, opts probeOptions) ([]probeJSONEntry, int, int, int) {
+	jobs := make(chan probeJob, len(targets))
+	entries := make([]probeJSONEntry, len(targets))
+	var counterMu sync.Mutex
 	available, unchanged, failed := 0, 0, 0
 
-	for _, repo := range targets {
-		url := pickProbeURL(repo)
-		if url == "" {
-			result := probe.Result{Method: constants.ProbeMethodNone, Error: fmt.Sprintf(constants.ErrProbeMissingURL, repo.Slug)}
-			recordProbeResult(db, repo, result)
-			entries = append(entries, makeProbeEntry(repo, result))
-			if !jsonOut {
-				fmt.Fprintf(os.Stderr, "%s\n", result.Error)
-			}
-			failed++
-			continue
-		}
-
-		result := probe.RunOne(url)
-		recordProbeResult(db, repo, result)
-		entries = append(entries, makeProbeEntry(repo, result))
-		available, unchanged, failed = tallyProbe(repo, result, available, unchanged, failed, jsonOut)
+	var wg sync.WaitGroup
+	for w := 0; w < opts.workers; w++ {
+		wg.Add(1)
+		go probeWorker(db, jobs, entries, &counterMu, &available, &unchanged, &failed, opts.jsonOut, &wg)
 	}
+	for i, repo := range targets {
+		jobs <- probeJob{idx: i, repo: repo}
+	}
+	close(jobs)
+	wg.Wait()
 
 	return entries, available, unchanged, failed
 }
 
-// makeProbeEntry converts a probe.Result + repo into a JSON-friendly row.
-func makeProbeEntry(repo model.ScanRecord, r probe.Result) probeJSONEntry {
-	return probeJSONEntry{
-		RepoID:         repo.ID,
-		Slug:           repo.Slug,
-		AbsolutePath:   repo.AbsolutePath,
-		NextVersionTag: r.NextVersionTag,
-		NextVersionNum: r.NextVersionNum,
-		Method:         r.Method,
-		IsAvailable:    r.IsAvailable,
-		Error:          r.Error,
+// probeWorker drains the job channel, writes its result to its own
+// index in entries (no contention — each index is owned by exactly one
+// job), and serialises counter/print updates through counterMu so the
+// final tallies and the human progress lines stay coherent.
+func probeWorker(db *store.DB, jobs <-chan probeJob, entries []probeJSONEntry,
+	counterMu *sync.Mutex, available, unchanged, failed *int, jsonOut bool, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for j := range jobs {
+		result := executeOneProbe(db, j.repo)
+		entries[j.idx] = makeProbeEntry(j.repo, result)
+		counterMu.Lock()
+		*available, *unchanged, *failed = tallyProbe(j.repo, result, *available, *unchanged, *failed, jsonOut)
+		counterMu.Unlock()
 	}
-}
-
-// emitProbeJSON dumps the collected entries as indented JSON to stdout.
-func emitProbeJSON(entries []probeJSONEntry) {
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(entries); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-}
-
-// pickProbeURL prefers HTTPS (less auth friction in CI), falls back to SSH.
-func pickProbeURL(r model.ScanRecord) string {
-	if r.HTTPSUrl != "" {
-		return r.HTTPSUrl
-	}
-
-	return r.SSHUrl
-}
-
-// recordProbeResult persists the probe row, logging-but-not-exiting on error.
-func recordProbeResult(db *store.DB, repo model.ScanRecord, result probe.Result) {
-	if err := db.RecordVersionProbe(result.AsModel(repo.ID)); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	}
-}
-
-// tallyProbe updates the running counters and (unless jsonOut) prints the
-// per-repo summary line.
-func tallyProbe(repo model.ScanRecord, r probe.Result, ok, none, fail int, jsonOut bool) (int, int, int) {
-	if r.Error != "" {
-		if !jsonOut {
-			fmt.Printf(constants.MsgProbeFailFmt, repo.Slug, r.Error)
-		}
-		return ok, none, fail + 1
-	}
-	if r.IsAvailable {
-		if !jsonOut {
-			fmt.Printf(constants.MsgProbeOkFmt, repo.Slug, r.NextVersionTag, r.Method)
-		}
-		return ok + 1, none, fail
-	}
-	if !jsonOut {
-		fmt.Printf(constants.MsgProbeNoneFmt, repo.Slug, r.Method)
-	}
-
-	return ok, none + 1, fail
 }

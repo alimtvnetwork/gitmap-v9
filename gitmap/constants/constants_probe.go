@@ -53,14 +53,35 @@ const (
 	MsgProbeNoneFmt     = "  · %s → no new version (method=%s)\n"
 	MsgProbeFailFmt     = "  ✗ %s → %s\n"
 	MsgProbeDoneFmt     = "✓ Probe complete: %d available, %d unchanged, %d failed.\n"
-	MsgProbeUsageHeader = "Usage: gitmap probe [<repo-path>|--all]"
+	MsgProbeUsageHeader = "Usage: gitmap probe [<repo-path>|--all] [--json] [--workers N]"
 	MsgProbeNoTargets   = "No repos to probe. Pass a path or --all.\n"
 )
 
 // VersionProbe CLI tokens.
 const (
-	ProbeFlagAll  = "--all"
-	ProbeFlagJSON = "--json"
+	ProbeFlagAll     = "--all"
+	ProbeFlagJSON    = "--json"
+	ProbeFlagWorkers = "--workers"
+)
+
+// Foreground probe pool sizing (v3.134.0+).
+//
+// `gitmap probe` runs a small capped worker pool so a probe of N repos
+// completes in ~N/2 round-trips instead of N. The cap is intentionally
+// tight — git hosting providers (GitHub in particular) throttle bursts
+// of unauthenticated ls-remote calls, and going above 3 workers
+// produces more 429s than throughput gains. The default of 2 is the
+// sweet spot for laptops on residential bandwidth.
+const (
+	ProbeDefaultWorkers = 2
+	ProbeMaxWorkers     = 3
+)
+
+// Probe worker-flag messages.
+const (
+	ErrProbeWorkersValue   = "version probe: --workers requires a positive integer, got %q"
+	ErrProbeWorkersMissing = "version probe: --workers requires a value"
+	MsgProbeWorkersClamped = "  · --workers %d exceeds cap, clamping to %d\n"
 )
 
 // Background probe tuning for `gitmap scan` (v3.123.0+).
