@@ -30,7 +30,7 @@ import (
 // matches the legacy human-readable output; `json` and `csv` exist
 // for piping into other tools (jq, spreadsheet imports, etc).
 func runStartupList(args []string) {
-	format, err := parseStartupListFlags(args)
+	format, jsonIndent, err := parseStartupListFlags(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(2)
@@ -41,17 +41,19 @@ func runStartupList(args []string) {
 		os.Exit(1)
 	}
 	dir, _ := startup.AutostartDir()
-	if err := renderStartupList(format, dir, entries); err != nil {
+	if err := renderStartupList(format, jsonIndent, dir, entries); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 }
 
-// parseStartupListFlags extracts the --format value and validates it
-// against the accepted set. Unknown values fail fast with exit 2 so
-// scripts can detect a typo immediately rather than getting silent
-// fall-through to a default rendering.
-func parseStartupListFlags(args []string) (string, error) {
+// parseStartupListFlags extracts --format and --json-indent and
+// validates each independently. Unknown values fail fast with exit
+// 2 so scripts catch typos immediately rather than getting silent
+// fall-through to a default rendering. --json-indent is parsed and
+// validated even when the format ignores it, so a typo like
+// `--json-indent=99` is caught regardless of the chosen format.
+func parseStartupListFlags(args []string) (string, int, error) {
 	fs := flag.NewFlagSet("startup-list", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	format := fs.String(
@@ -59,19 +61,28 @@ func parseStartupListFlags(args []string) (string, error) {
 		constants.StartupListFormatTable,
 		constants.FlagDescStartupListFormat,
 	)
+	jsonIndent := fs.Int(
+		constants.FlagStartupListJSONIndent,
+		constants.StartupListJSONIndentDefault,
+		constants.FlagDescStartupListJSONIndent,
+	)
 	if err := fs.Parse(args); err != nil {
 
-		return "", err
+		return "", 0, err
+	}
+	if *jsonIndent < 0 || *jsonIndent > constants.StartupListJSONIndentMax {
+
+		return "", 0, fmt.Errorf(constants.ErrStartupListBadJSONIndent, *jsonIndent)
 	}
 	switch *format {
 	case constants.StartupListFormatTable, constants.OutputTerminal,
 		constants.OutputJSON, constants.StartupListFormatJSONL,
 		constants.OutputCSV:
 
-		return *format, nil
+		return *format, *jsonIndent, nil
 	default:
 
-		return "", fmt.Errorf(constants.ErrStartupListBadFormat, *format)
+		return "", 0, fmt.Errorf(constants.ErrStartupListBadFormat, *format)
 	}
 }
 
