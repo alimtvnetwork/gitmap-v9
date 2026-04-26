@@ -31,7 +31,11 @@ type batchRowResult struct {
 // the legacy sequential behavior with deterministic stdout ordering;
 // values >1 fan repos out across a bounded pool that mirrors the main
 // cloner's pattern (see gitmap/cloner/concurrent.go).
-func runCloneNextBatch(csvPath string, walkAll bool, maxConcurrency int) {
+//
+// `noProgress` suppresses the live per-repo progress line printed as
+// each worker finishes (v3.124.0+). The end-of-batch summary always
+// prints regardless.
+func runCloneNextBatch(csvPath string, walkAll bool, maxConcurrency int, noProgress bool) {
 	repos, err := loadBatchRepos(csvPath, walkAll)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, constants.ErrCloneNextBatchLoad, err)
@@ -40,7 +44,8 @@ func runCloneNextBatch(csvPath string, walkAll bool, maxConcurrency int) {
 
 	fmt.Printf(constants.MsgCloneNextBatchStart, len(repos))
 
-	results := processBatchRepos(repos, maxConcurrency)
+	progress := newBatchProgressReporter(len(repos), noProgress)
+	results := processBatchRepos(repos, maxConcurrency, progress.OnResult)
 	reportPath := writeBatchReport(results)
 	printBatchSummary(results, reportPath)
 }
