@@ -53,8 +53,6 @@ package stablejson
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
 	"io"
 )
 
