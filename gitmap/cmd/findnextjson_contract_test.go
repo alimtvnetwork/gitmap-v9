@@ -11,9 +11,9 @@ package cmd
 //     method, probedAt.
 //   - ScanRecord key order (nested under `repo`): id, slug,
 //     repoName, httpsUrl, sshUrl, branch, branchSource,
-//     relativePath, absolutePath, cloneInstruction, notes.
+//     relativePath, absolutePath, cloneInstruction, notes, depth.
 //
-// ScanRecord is large (11 fields) and shared with several other CLI
+// ScanRecord is large (12 fields) and shared with several other CLI
 // outputs, so a rename/reorder there would silently ripple into
 // multiple consumers. Pinning it here adds one tripwire that catches
 // every such change.

@@ -76,9 +76,16 @@ type dirJob struct {
 }
 
 // RepoInfo holds raw data extracted from a discovered Git repo.
+//
+// Depth records the directory level at which the repo was found,
+// counted from the scan root (depth 0 = root itself, depth 1 = its
+// immediate children, …). Surfaced through ScanRecord.Depth so users
+// can audit which repos sit at the boundary of the configured
+// MaxDepth cap and decide whether to widen it.
 type RepoInfo struct {
 	AbsolutePath string
 	RelativePath string
+	Depth        int
 }
 
 // ScanProgress is a snapshot of in-flight scan counters delivered to a
@@ -317,7 +324,7 @@ func (st *scanState) processDir(job dirJob) {
 		return
 	}
 	if st.containsGitMarker(job.path, entries) {
-		st.recordRepo(job.path)
+		st.recordRepo(job.path, job.depth)
 
 		return
 	}
@@ -413,7 +420,10 @@ func (st *scanState) enqueue(job dirJob) {
 
 // recordRepo appends a discovered repo (parent of the .git dir) under
 // the shared mutex. Repo recording is the only mutex contention point.
-func (st *scanState) recordRepo(repoPath string) {
+// `depth` is the directory level at which the repo was found relative
+// to the scan root and is propagated into RepoInfo.Depth so users can
+// audit boundary cases against the configured MaxDepth cap.
+func (st *scanState) recordRepo(repoPath string, depth int) {
 	rel, err := filepath.Rel(st.root, repoPath)
 	if err != nil {
 		st.recordDirErr(repoPath, err)
@@ -424,6 +434,7 @@ func (st *scanState) recordRepo(repoPath string) {
 	st.repos = append(st.repos, RepoInfo{
 		AbsolutePath: repoPath,
 		RelativePath: rel,
+		Depth:        depth,
 	})
 	st.mu.Unlock()
 	st.reposFound.Add(1)
