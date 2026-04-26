@@ -249,11 +249,3 @@ func stringSet(xs []string) map[string]bool {
 
 	return m
 }
-
-// Compile-time assertion that io is used (it isn't directly here,
-// but collectObjectKeys imports it via the helpers file — keeping
-// the import line in this test file would be unused). This var
-// pattern is unnecessary; suppress by NOT importing io. Left as a
-// breadcrumb for future maintainers wondering why this file omits
-// it despite calling collectObjectKeys.
-var _ = io.EOF
