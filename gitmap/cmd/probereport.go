@@ -33,8 +33,9 @@ type probeJSONEntry struct {
 }
 
 // executeOneProbe runs a single probe and persists it, mirroring the
-// missing-URL handling that the sequential loop used.
-func executeOneProbe(db *store.DB, repo model.ScanRecord) probe.Result {
+// missing-URL handling that the sequential loop used. depth is forwarded
+// to the shallow-clone fallback (probe.RunOneWithDepth).
+func executeOneProbe(db *store.DB, repo model.ScanRecord, depth int) probe.Result {
 	url := pickProbeURL(repo)
 	if url == "" {
 		result := probe.Result{Method: constants.ProbeMethodNone, Error: fmt.Sprintf(constants.ErrProbeMissingURL, repo.Slug)}
@@ -42,7 +43,7 @@ func executeOneProbe(db *store.DB, repo model.ScanRecord) probe.Result {
 
 		return result
 	}
-	result := probe.RunOne(url)
+	result := probe.RunOneWithDepth(url, depth)
 	recordProbeResult(db, repo, result)
 
 	return result

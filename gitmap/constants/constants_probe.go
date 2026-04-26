@@ -53,18 +53,25 @@ const (
 	MsgProbeNoneFmt     = "  · %s → no new version (method=%s)\n"
 	MsgProbeFailFmt     = "  ✗ %s → %s\n"
 	MsgProbeDoneFmt     = "✓ Probe complete: %d available, %d unchanged, %d failed.\n"
-	MsgProbeUsageHeader = "Usage: gitmap probe [<repo-path>|--all] [--json] [--workers N]"
+	MsgProbeUsageHeader = "Usage: gitmap probe [<repo-path>|--all] [--json] [--probe-workers N] [--probe-depth N]"
 	MsgProbeNoTargets   = "No repos to probe. Pass a path or --all.\n"
 )
 
 // VersionProbe CLI tokens.
+//
+// `--workers` is the legacy spelling kept as a deprecated alias for
+// `--probe-workers`; the foreground probe accepts both, but the new
+// name is preferred (and is the same string scan accepts, which keeps
+// muscle memory consistent across the two commands).
 const (
-	ProbeFlagAll     = "--all"
-	ProbeFlagJSON    = "--json"
-	ProbeFlagWorkers = "--workers"
+	ProbeFlagAll          = "--all"
+	ProbeFlagJSON         = "--json"
+	ProbeFlagWorkers      = "--workers"
+	ProbeFlagProbeWorkers = "--probe-workers"
+	ProbeFlagDepth        = "--probe-depth"
 )
 
-// Foreground probe pool sizing (v3.134.0+).
+// Foreground probe pool sizing (v3.134.0+) and clone-depth (v3.135.0+).
 //
 // `gitmap probe` runs a small capped worker pool so a probe of N repos
 // completes in ~N/2 round-trips instead of N. The cap is intentionally
@@ -72,16 +79,27 @@ const (
 // of unauthenticated ls-remote calls, and going above 3 workers
 // produces more 429s than throughput gains. The default of 2 is the
 // sweet spot for laptops on residential bandwidth.
+//
+// ProbeDefaultDepth is the `--depth N` value passed to the shallow-clone
+// fallback. 1 is enough for the vast majority of repos because the
+// fallback only runs when ls-remote returned nothing — at which point
+// even one commit of history is sufficient to surface the tag list.
+// Bump it (e.g. via `--probe-depth 25`) for repos whose latest tag
+// lives further back than the first refs page exposes.
 const (
 	ProbeDefaultWorkers = 2
 	ProbeMaxWorkers     = 3
+	ProbeDefaultDepth   = 1
 )
 
-// Probe worker-flag messages.
+// Probe worker- and depth-flag messages.
 const (
-	ErrProbeWorkersValue   = "version probe: --workers requires a positive integer, got %q"
-	ErrProbeWorkersMissing = "version probe: --workers requires a value"
-	MsgProbeWorkersClamped = "  · --workers %d exceeds cap, clamping to %d\n"
+	ErrProbeWorkersValue   = "version probe: --probe-workers requires a positive integer, got %q"
+	ErrProbeWorkersMissing = "version probe: --probe-workers requires a value"
+	ErrProbeDepthValue     = "version probe: --probe-depth requires a positive integer, got %q"
+	ErrProbeDepthMissing   = "version probe: --probe-depth requires a value"
+	MsgProbeWorkersClamped = "  · --probe-workers %d exceeds cap, clamping to %d\n"
+	MsgProbeWorkersAlias   = "  · --workers is deprecated; use --probe-workers instead\n"
 )
 
 // Background probe tuning for `gitmap scan` (v3.123.0+).
@@ -101,8 +119,15 @@ const (
 	// process exit).
 	ScanProbeFlagNoWait = "no-probe-wait"
 	// ScanProbeFlagConcurrency sets the worker-pool size for the
-	// background probe runner.
+	// background probe runner. Deprecated alias for ScanProbeFlagProbeWorkers.
 	ScanProbeFlagConcurrency = "probe-concurrency"
+	// ScanProbeFlagProbeWorkers is the unified spelling shared with
+	// `gitmap probe --probe-workers`. Same semantics as
+	// ScanProbeFlagConcurrency; either is accepted.
+	ScanProbeFlagProbeWorkers = "probe-workers"
+	// ScanProbeFlagProbeDepth controls the `git clone --depth N`
+	// passed to the shallow-clone fallback (v3.135.0+).
+	ScanProbeFlagProbeDepth = "probe-depth"
 
 	// ScanProbeDefaultConcurrency caps the background pool. Three
 	// workers is the documented sweet spot: parallel enough to
@@ -111,15 +136,22 @@ const (
 	ScanProbeDefaultConcurrency = 3
 	// ScanProbeAutoTriggerCeiling is the repo-count threshold under
 	// which background probing fires automatically. Above it the
-	// user must opt in by passing --probe-concurrency explicitly.
+	// user must opt in by passing --probe-workers explicitly.
 	ScanProbeAutoTriggerCeiling = 50
 
-	// FlagDescScanProbeDisable, FlagDescScanProbeNoWait, and
-	// FlagDescScanProbeConcurrency are the help strings shown by
+	// FlagDescScanProbeDisable, FlagDescScanProbeNoWait,
+	// FlagDescScanProbeConcurrency, FlagDescScanProbeProbeWorkers, and
+	// FlagDescScanProbeProbeDepth are the help strings shown by
 	// `gitmap help scan`.
-	FlagDescScanProbeDisable     = "Skip the background version probe entirely (offline / air-gapped runs)"
-	FlagDescScanProbeNoWait      = "Return as soon as scan finishes; let probes keep running in the background"
-	FlagDescScanProbeConcurrency = "Worker count for the background probe pool (default 3, 0 = disable)"
+	FlagDescScanProbeDisable      = "Skip the background version probe entirely (offline / air-gapped runs)"
+	FlagDescScanProbeNoWait       = "Return as soon as scan finishes; let probes keep running in the background"
+	FlagDescScanProbeConcurrency  = "(deprecated, use --probe-workers) Worker count for the background probe pool"
+	FlagDescScanProbeProbeWorkers = "Worker count for the background probe pool (default 3, 0 = disable)"
+	FlagDescScanProbeProbeDepth   = "Shallow-clone depth used by the probe fallback (default 1)"
+
+	// MsgScanProbeConcurrencyAlias warns when the deprecated
+	// --probe-concurrency spelling is used at the scan command line.
+	MsgScanProbeConcurrencyAlias = "  · --probe-concurrency is deprecated; use --probe-workers instead\n"
 )
 
 // Background probe runtime messages.
@@ -140,5 +172,5 @@ const (
 	// MsgScanProbeSkippedAutoFmt prints when the auto-trigger
 	// declined to start (repo count above the ceiling) so users
 	// understand why no probe ran.
-	MsgScanProbeSkippedAutoFmt = "  · Background probe skipped: %d repos exceeds auto-trigger ceiling (%d). Pass --probe-concurrency to force.\n"
+	MsgScanProbeSkippedAutoFmt = "  · Background probe skipped: %d repos exceeds auto-trigger ceiling (%d). Pass --probe-workers to force.\n"
 )

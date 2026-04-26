@@ -59,10 +59,11 @@ func startBackgroundProbe(records []model.ScanRecord, opts ScanProbeOptions, qui
 		func(rec model.ScanRecord, res probe.Result) {
 			recordProbeResult(db, rec, res)
 		})
-	// Install the failure hook BEFORE enqueueing jobs so workers
-	// observe a non-nil hook on every dequeue. Setting it after
-	// Start would race with the first probe completion.
+	// Install the failure hook AND clone-depth BEFORE enqueueing
+	// jobs so workers observe non-default values on every dequeue.
+	// Setting either after Start would race with the first probe.
 	installProbeFailureHook(runner, errCollector)
+	runner.SetCloneDepth(opts.Depth)
 
 	enqueueProbeJobs(runner, records)
 	if !quiet {

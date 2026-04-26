@@ -11,9 +11,13 @@ import (
 )
 
 // tryShallowClone is the heavyweight fallback. Clones into a temp dir with
-// `--depth 1 --filter=blob:none --no-checkout` (treeless, no working copy),
-// runs `git tag --sort=-v:refname`, and returns the top result.
-func tryShallowClone(url string) (string, error) {
+// `--depth N --filter=blob:none --no-checkout` (treeless, no working copy),
+// runs `git tag --sort=-v:refname`, and returns the top result. depth<1 is
+// coerced to 1 so we always make a non-fatal request to the remote.
+func tryShallowClone(url string, depth int) (string, error) {
+	if depth < 1 {
+		depth = 1
+	}
 	tmp, err := os.MkdirTemp("", "gitmap-probe-*")
 	if err != nil {
 		return "", fmt.Errorf("mkdtemp: %w", err)
@@ -22,7 +26,7 @@ func tryShallowClone(url string) (string, error) {
 
 	target := filepath.Join(tmp, "repo")
 	clone := exec.Command("git", "clone",
-		"--depth", "1",
+		"--depth", fmt.Sprintf("%d", depth),
 		"--filter=blob:none",
 		"--no-checkout",
 		url, target,

@@ -129,7 +129,7 @@ func runProbePool(db *store.DB, targets []model.ScanRecord, opts probeOptions) (
 	var wg sync.WaitGroup
 	for w := 0; w < opts.workers; w++ {
 		wg.Add(1)
-		go probeWorker(db, jobs, entries, &counterMu, &available, &unchanged, &failed, opts.jsonOut, &wg)
+		go probeWorker(db, jobs, entries, &counterMu, &available, &unchanged, &failed, opts, &wg)
 	}
 	for i, repo := range targets {
 		jobs <- probeJob{idx: i, repo: repo}
@@ -143,15 +143,16 @@ func runProbePool(db *store.DB, targets []model.ScanRecord, opts probeOptions) (
 // probeWorker drains the job channel, writes its result to its own
 // index in entries (no contention — each index is owned by exactly one
 // job), and serialises counter/print updates through counterMu so the
-// final tallies and the human progress lines stay coherent.
+// final tallies and the human progress lines stay coherent. opts is
+// passed by value so each worker reads jsonOut/depth without locking.
 func probeWorker(db *store.DB, jobs <-chan probeJob, entries []probeJSONEntry,
-	counterMu *sync.Mutex, available, unchanged, failed *int, jsonOut bool, wg *sync.WaitGroup) {
+	counterMu *sync.Mutex, available, unchanged, failed *int, opts probeOptions, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for j := range jobs {
-		result := executeOneProbe(db, j.repo)
+		result := executeOneProbe(db, j.repo, opts.depth)
 		entries[j.idx] = makeProbeEntry(j.repo, result)
 		counterMu.Lock()
-		*available, *unchanged, *failed = tallyProbe(j.repo, result, *available, *unchanged, *failed, jsonOut)
+		*available, *unchanged, *failed = tallyProbe(j.repo, result, *available, *unchanged, *failed, opts.jsonOut)
 		counterMu.Unlock()
 	}
 }

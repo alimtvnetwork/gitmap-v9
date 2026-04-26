@@ -33,10 +33,19 @@ type Result struct {
 	Error          string
 }
 
-// RunOne probes a single repo for the highest tag. cloneURL must be a usable
-// HTTPS or SSH URL. Returns a Result with Error populated on failure (never
-// returns a non-nil error — failures are recorded, not bubbled).
+// RunOne probes a single repo for the highest tag using the default
+// shallow-clone depth (1). Kept for source compatibility with callers
+// that don't expose a depth knob; new code should call RunOneWithDepth.
 func RunOne(cloneURL string) Result {
+	return RunOneWithDepth(cloneURL, constants.ProbeDefaultDepth)
+}
+
+// RunOneWithDepth probes a single repo for the highest tag, passing
+// `depth` to the `git clone --depth N` shallow-clone fallback. cloneURL
+// must be a usable HTTPS or SSH URL. Returns a Result with Error
+// populated on failure (never returns a non-nil error — failures are
+// recorded, not bubbled). depth<1 is coerced to 1 inside tryShallowClone.
+func RunOneWithDepth(cloneURL string, depth int) Result {
 	if strings.TrimSpace(cloneURL) == "" {
 		return Result{Method: constants.ProbeMethodNone, Error: "empty clone url"}
 	}
@@ -45,7 +54,7 @@ func RunOne(cloneURL string) Result {
 		return makeResult(tag, constants.ProbeMethodLsRemote)
 	}
 
-	if tag, err := tryShallowClone(cloneURL); err == nil {
+	if tag, err := tryShallowClone(cloneURL, depth); err == nil {
 		return makeResult(tag, constants.ProbeMethodShallowClone)
 	} else {
 		return Result{
