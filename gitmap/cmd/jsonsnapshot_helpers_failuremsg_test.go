@@ -121,13 +121,9 @@ func TestScanEveryObjectKeysPure_HappyPath(t *testing.T) {
 	}
 }
 
-// scanEveryObjectKeysPure mirrors readEveryObjectKeys but returns
-// (keys, error) instead of calling t.Fatalf. Kept in this test
-// file (NOT in jsonsnapshot_helpers_test.go) so it doesn't show up
-// in the production helper surface — its sole purpose is to make
-// the failure-message contract testable. Any wording change in the
-// production helper must be mirrored here, which is exactly the
-// guard rail this test exists to provide.
+// scanEveryObjectKeysPure mirrors readEveryObjectKeys with an
+// error return instead of t.Fatalf. Sole purpose: make the
+// failure-message contract testable. Wording must stay in sync.
 func scanEveryObjectKeysPure(raw []byte) ([][]string, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	if err := expectDelim(dec, '['); err != nil {
