@@ -1,0 +1,122 @@
+package clonefrom
+
+// Dry-run renderer. Pure function over a Plan; never touches disk
+// or the network. Output is human-readable plain text designed to
+// be grep-able and diff-able across runs of the same plan.
+//
+// Format (chosen for clarity over compactness — dry-run output is
+// read once by a human, not parsed by tooling):
+//
+//   gitmap clone-from: dry-run
+//   source: /abs/path/to/plan.csv (csv)
+//   3 row(s) — pass --execute to actually clone
+//
+//     1. https://github.com/a/b.git
+//        dest:   ./b
+//        branch: (default HEAD)
+//        depth:  full
+//     2. ...
+//
+// Tooling that wants machine-readable dry-run output can pass
+// --format=json to the CLI; that path renders a JSON array of the
+// same Plan.Rows and is covered by a separate JSON Schema (see
+// spec/08-json-schemas/_TODO.md entry for clone-from).
+
+import (
+	"fmt"
+	"io"
+	"path"
+	"strings"
+
+	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
+)
+
+// Render writes the human-readable dry-run preview to w. Returns
+// the first write error so callers (CLI) can surface it instead of
+// silently truncating output to a closed pipe.
+func Render(w io.Writer, p Plan) error {
+	header := fmt.Sprintf(constants.MsgCloneFromDryHeader, p.Source, p.Format, len(p.Rows))
+	if _, err := io.WriteString(w, header); err != nil {
+
+		return err
+	}
+	for i, r := range p.Rows {
+		block := renderRow(i+1, r)
+		if _, err := io.WriteString(w, block); err != nil {
+
+			return err
+		}
+	}
+
+	return nil
+}
+
+// renderRow formats one row's four-line block. Pure function so
+// it's trivially testable without spinning up a buffer/writer.
+func renderRow(n int, r Row) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "  %d. %s\n", n, r.URL)
+	fmt.Fprintf(&sb, "     dest:   %s\n", displayDest(r))
+	fmt.Fprintf(&sb, "     branch: %s\n", displayBranch(r))
+	fmt.Fprintf(&sb, "     depth:  %s\n", displayDepth(r))
+
+	return sb.String()
+}
+
+// displayDest shows the resolved destination, marking implicit
+// derivations with `(derived)` so the user knows we're computing
+// the dest from the URL basename rather than honoring an explicit
+// value. Helps when a typo'd URL produces a surprising dest.
+func displayDest(r Row) string {
+	if len(r.Dest) > 0 {
+
+		return r.Dest
+	}
+
+	return DeriveDest(r.URL) + "  (derived)"
+}
+
+// DeriveDest computes the directory name `git clone <url>` would
+// pick by default: the last path segment with a trailing `.git`
+// stripped. Public so the executor can use the same logic when
+// the row's Dest field is empty.
+func DeriveDest(url string) string {
+	// Strip scp-style user@host: prefix if present so path.Base
+	// works on the right portion.
+	if i := strings.LastIndex(url, ":"); i > 0 && !strings.HasPrefix(url, "ssh://") &&
+		!strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
+		url = url[i+1:]
+	}
+	base := path.Base(url)
+	base = strings.TrimSuffix(base, ".git")
+	if len(base) == 0 || base == "." || base == "/" {
+
+		return "repo"
+	}
+
+	return base
+}
+
+// displayBranch shows the explicit branch or a "(default HEAD)"
+// placeholder. Placeholder uses parens to visually distinguish
+// from a literal branch named e.g. `default`.
+func displayBranch(r Row) string {
+	if len(r.Branch) > 0 {
+
+		return r.Branch
+	}
+
+	return "(default HEAD)"
+}
+
+// displayDepth shows "full" for zero-depth (full history) or the
+// explicit shallow depth. "full" reads better than "0" in user-
+// facing output.
+func displayDepth(r Row) string {
+	if r.Depth > 0 {
+
+		return fmt.Sprintf("%d", r.Depth)
+	}
+
+	return "full"
+}
