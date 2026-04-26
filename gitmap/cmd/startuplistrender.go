@@ -16,15 +16,22 @@ package cmd
 // JSON / CSV encoders take an io.Writer (rather than hardcoding
 // os.Stdout) so contract tests can capture the bytes into a buffer
 // for byte-exact comparison against committed golden fixtures.
+//
+// JSON encoding goes through gitmap/stablejson rather than
+// encoding/json directly: stablejson builds each object key-by-key
+// in caller-declared order and CANNOT be reordered by a future Go
+// release or encoding/json/v2. The output is byte-identical to the
+// previous Encoder-based code, so the existing golden fixtures pass
+// unchanged. See gitmap/stablejson/stablejson.go for full rationale.
 
 import (
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v7/gitmap/stablejson"
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/startup"
 )
 
@@ -60,33 +67,43 @@ func renderStartupListTable(dir string, entries []startup.Entry) {
 	fmt.Printf(constants.MsgStartupListFooter, len(entries))
 }
 
-// startupListJSONEntry mirrors startup.Entry with explicit JSON tags
-// so the on-the-wire field names are stable even if the internal
-// struct gets renamed. lower_snake would be more idiomatic for JSON
-// but we use lowerCamel to match the rest of gitmap's JSON outputs.
+// startupListJSONFields names — single source of truth for both the
+// on-the-wire field labels and their order. Centralized as constants
+// so any consumer-facing rename or reorder is one diff to review.
 //
-// CONTRACT: the field set, JSON tag names, and field DECLARATION
-// order are pinned by gitmap/cmd/startuplistjson_contract_test.go.
-// Reordering, renaming, or adding/removing fields will fail those
-// tests — intentional changes require regenerating the golden
-// fixtures and bumping the consumer-facing changelog.
-type startupListJSONEntry struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
-	Exec string `json:"exec"`
-}
+// CONTRACT: the names AND order here are pinned by
+// gitmap/cmd/startuplistjson_contract_test.go (golden bytes for
+// empty + single, structural key-order check for multi-entry).
+// Reordering, renaming, or adding fields will fail those tests —
+// intentional changes require regenerating the golden fixtures and
+// bumping the consumer-facing changelog.
+const (
+	startupListJSONKeyName = "name"
+	startupListJSONKeyPath = "path"
+	startupListJSONKeyExec = "exec"
+)
 
-// encodeStartupListJSON writes a JSON array to w. Always emits a
-// non-nil slice so empty results encode as `[]` (NOT `null`).
+// encodeStartupListJSON writes a JSON array to w using stablejson,
+// which builds each object key-by-key in caller-declared order
+// instead of relying on encoding/json's reflection-based struct
+// field iteration. This guarantees field order CANNOT drift even if
+// a future Go release (or encoding/json/v2) changes how struct
+// fields are walked. See gitmap/stablejson/stablejson.go for the
+// full rationale and byte-compat guarantee.
+//
+// Empty input still encodes as `[]\n` (NOT `null`) so jq pipelines
+// that do `length` work without conditionals.
 func encodeStartupListJSON(w io.Writer, entries []startup.Entry) error {
-	out := make([]startupListJSONEntry, 0, len(entries))
+	items := make([][]stablejson.Field, 0, len(entries))
 	for _, e := range entries {
-		out = append(out, startupListJSONEntry{Name: e.Name, Path: e.Path, Exec: e.Exec})
+		items = append(items, []stablejson.Field{
+			{Key: startupListJSONKeyName, Value: e.Name},
+			{Key: startupListJSONKeyPath, Value: e.Path},
+			{Key: startupListJSONKeyExec, Value: e.Exec},
+		})
 	}
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", constants.JSONIndent)
 
-	return enc.Encode(out)
+	return stablejson.WriteArray(w, items)
 }
 
 // encodeStartupListCSV writes a header row followed by one row per
