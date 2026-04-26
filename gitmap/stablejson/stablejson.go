@@ -114,49 +114,7 @@ func WriteArrayIndent(w io.Writer, items [][]Field, indent string) error {
 	return writeArrayPretty(w, &buf, items, indent)
 }
 
-// writeArrayPretty emits the multi-line indented form. Split out so
-// WriteArrayIndent stays under the 15-line code-style budget and
-// the minified path doesn't pay for branch noise on every line.
-func writeArrayPretty(w io.Writer, buf *bytes.Buffer, items [][]Field, indent string) error {
-	buf.WriteString("[\n")
-	for i, obj := range items {
-		if err := writeObject(buf, obj, indent); err != nil {
-
-			return err
-		}
-		if i < len(items)-1 {
-			buf.WriteString(",\n")
-		} else {
-			buf.WriteString("\n")
-		}
-	}
-	buf.WriteString("]\n")
-	_, err := w.Write(buf.Bytes())
-
-	return err
-}
-
-// writeArrayMinified emits `[{...},{...}]\n` on a single line. The
-// per-object encoder is the same one JSONL uses, ensuring a value
-// rendered minified inside an array is byte-identical to the same
-// value rendered as one JSONL line — important for hash-based
-// integrity checks that re-encode and compare.
-func writeArrayMinified(w io.Writer, buf *bytes.Buffer, items [][]Field) error {
-	buf.WriteByte('[')
-	for i, obj := range items {
-		if i > 0 {
-			buf.WriteByte(',')
-		}
-		if err := writeCompactObject(buf, obj); err != nil {
-
-			return err
-		}
-	}
-	buf.WriteString("]\n")
-	_, err := w.Write(buf.Bytes())
-
-	return err
-}
+// writeArrayPretty / writeArrayMinified live in writers.go.
 
 // WriteJSONLines writes `items` as JSON Lines: one compact object
 // per line, terminated by `\n` (the de-facto `jsonl` format consumed
