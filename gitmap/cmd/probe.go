@@ -26,27 +26,39 @@ import (
 // stay under provider rate limits.
 func runProbe(args []string) {
 	checkHelp("probe", args)
+	opts := mustParseProbeArgs(args)
 
+	db := openSfDB()
+	defer db.Close()
+
+	targets := mustResolveProbeTargets(db, opts.rest)
+	if len(targets) == 0 {
+		emitProbeEmpty(opts.jsonOut)
+		return
+	}
+	probeAndReport(db, targets, opts)
+}
+
+// mustParseProbeArgs is a fatal wrapper around parseProbeArgs.
+func mustParseProbeArgs(args []string) probeOptions {
 	opts, err := parseProbeArgs(args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
-	db := openSfDB()
-	defer db.Close()
+	return opts
+}
 
-	targets, err := resolveProbeTargets(db, opts.rest)
+// mustResolveProbeTargets is a fatal wrapper around resolveProbeTargets.
+func mustResolveProbeTargets(db *store.DB, rest []string) []model.ScanRecord {
+	targets, err := resolveProbeTargets(db, rest)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	if len(targets) == 0 {
-		emitProbeEmpty(opts.jsonOut)
-		return
-	}
 
-	probeAndReport(db, targets, opts)
+	return targets
 }
 
 // emitProbeEmpty handles the "no targets" case in either output mode.
