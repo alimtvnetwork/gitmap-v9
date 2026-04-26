@@ -4,17 +4,31 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/model"
 )
 
+// findNextUsageExitCode is the conventional CLI usage-error exit code.
+// Distinct from exit-1 (used for I/O / DB failures) so scripts can
+// branch on the cause: "you typed something wrong" vs "the system
+// failed". Mirrors getopt(3) and most Unix tools.
+const findNextUsageExitCode = 2
+
 // runFindNext dispatches `gitmap find-next [--scan-folder <id>] [--json]`.
+//
+// As of v3.122.0 the parser rejects unknown flags, malformed values,
+// and `--json=...` boolean misuse with a clear stderr message + the
+// usage header, then exits 2. Previously these were silently ignored.
 func runFindNext(args []string) {
 	checkHelp("find-next", args)
 
-	scanFolderID, jsonOut := parseFindNextFlags(args)
+	scanFolderID, jsonOut, err := parseFindNextFlags(args)
+	if err != nil {
+		fmt.Fprint(os.Stderr, err.Error())
+		fmt.Fprintln(os.Stderr, constants.MsgFindNextUsageHeader)
+		os.Exit(findNextUsageExitCode)
+	}
 
 	db := openSfDB()
 	defer db.Close()
@@ -28,32 +42,11 @@ func runFindNext(args []string) {
 	emitFindNext(rows, jsonOut)
 }
 
-// parseFindNextFlags extracts --scan-folder and --json from args. Unknown
-// tokens are silently ignored — find-next has no positional arguments.
-func parseFindNextFlags(args []string) (int64, bool) {
-	var scanFolderID int64
-	jsonOut := false
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case constants.FindNextFlagJSON:
-			jsonOut = true
-		case constants.FindNextFlagScanFolder:
-			if i+1 < len(args) {
-				if v, err := strconv.ParseInt(args[i+1], 10, 64); err == nil {
-					scanFolderID = v
-				}
-				i++
-			}
-		}
-	}
-
-	return scanFolderID, jsonOut
-}
-
 // emitFindNext writes either JSON or the human-readable summary.
 func emitFindNext(rows []model.FindNextRow, jsonOut bool) {
 	if jsonOut {
 		emitFindNextJSON(rows)
+
 		return
 	}
 	emitFindNextText(rows)
@@ -76,6 +69,7 @@ func emitFindNextJSON(rows []model.FindNextRow) {
 func emitFindNextText(rows []model.FindNextRow) {
 	if len(rows) == 0 {
 		fmt.Print(constants.MsgFindNextEmpty)
+
 		return
 	}
 

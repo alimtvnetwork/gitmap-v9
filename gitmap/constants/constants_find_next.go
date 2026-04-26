@@ -47,11 +47,49 @@ const (
 	MsgFindNextUsageHeader = "Usage: gitmap find-next [--scan-folder <id>] [--json]"
 )
 
+// find-next flag-validation errors. Each one is printed to stderr with
+// the usage header before the process exits 2 (the conventional exit
+// code for CLI usage errors — distinct from the exit-1 used for I/O
+// or DB failures so scripts can branch on the cause).
+const (
+	// ErrFindNextUnknownFlagFmt fires on tokens like `--jsno` or
+	// `--scanfolder` that don't match any known flag. The %q wraps
+	// the offending token so embedded whitespace stays visible.
+	ErrFindNextUnknownFlagFmt = "find-next: unknown flag %q\n"
+	// ErrFindNextUnknownFlagSuggestFmt is the same as above but
+	// includes a "did you mean" hint when the unknown token is one
+	// edit away from a known flag.
+	ErrFindNextUnknownFlagSuggestFmt = "find-next: unknown flag %q (did you mean %q?)\n"
+	// ErrFindNextBoolTakesNoValueFmt fires on `--json=true` and
+	// friends. --json is a pure boolean flag; accepting `=true`
+	// would imply `=false` is also valid, and silently ignoring
+	// the value would let `--json=fasle` do the wrong thing.
+	ErrFindNextBoolTakesNoValueFmt = "find-next: %s does not take a value (got %q)\n"
+	// ErrFindNextMissingValueFmt fires when `--scan-folder` is the
+	// last token or is followed by another flag.
+	ErrFindNextMissingValueFmt = "find-next: %s requires an integer scan-folder ID\n"
+	// ErrFindNextBadIntFmt replaces the previous silent ignore for
+	// non-integer scan-folder IDs (e.g. `--scan-folder abc`).
+	ErrFindNextBadIntFmt = "find-next: %s expects an integer, got %q\n"
+	// ErrFindNextUnexpectedArgFmt fires on bare positional tokens.
+	// find-next takes flags only; a stray positional is almost
+	// always a quoting bug worth surfacing.
+	ErrFindNextUnexpectedArgFmt = "find-next: unexpected positional argument %q\n"
+)
+
 // find-next CLI flag tokens.
 const (
 	FindNextFlagScanFolder = "--scan-folder"
 	FindNextFlagJSON       = "--json"
 )
+
+// FindNextKnownFlags lists every flag find-next accepts. Used by the
+// suggestion engine to compute "did you mean?" hints for typos and by
+// the validator to detect unknown tokens. Order is irrelevant.
+var FindNextKnownFlags = []string{
+	FindNextFlagScanFolder,
+	FindNextFlagJSON,
+}
 
 // gitmap:cmd top-level
 // find-next CLI commands.
