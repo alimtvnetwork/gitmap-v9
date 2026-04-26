@@ -575,6 +575,87 @@ override applies to both `scan` and `rescan` since they share the
 same walker — set it negative for unbounded walks when you really
 need to catch a depth-5+ repo without restructuring directories.
 
+#### `data/config.json` exclude list — sample and interaction with the depth cap
+
+The `excludeDirs` field in `data/config.json` is a list of directory
+**base names** (not paths, not globs) that the walker drops *before*
+enqueueing — which means the exclude check runs strictly **before**
+the depth check, so an excluded directory costs zero of your 4-level
+budget. This is the difference that makes deep monorepos scan
+quickly without raising the cap.
+
+A representative `data/config.json`:
+
+```json
+{
+  "defaultMode": "https",
+  "defaultOutput": "terminal",
+  "outputDir": ".gitmap/output",
+  "excludeDirs": [
+    "node_modules",
+    "vendor",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "target",
+    "dist",
+    "build",
+    ".next",
+    ".cache",
+    ".terraform"
+  ],
+  "notes": "",
+  "dashboardRefresh": 0
+}
+```
+
+Matching rules — short and strict:
+
+- **Exact basename, case-sensitive.** `node_modules` excludes
+  `~/code/app/node_modules/` but **not** `Node_Modules` or
+  `node_modules.bak`.
+- **No path patterns, no globs.** `vendor/protos` is not a valid
+  entry — use `vendor` and accept that every `vendor/` directory in
+  the tree is skipped.
+- **Applied at every depth from 1 upward.** The check fires inside
+  `handleSubdir` before the child is enqueued, so a `node_modules/`
+  at depth 2 and one at depth 4 are both dropped equally.
+- **Does not affect already-discovered repos.** A repo whose own
+  basename appears in `excludeDirs` (rare, but possible) will still
+  be skipped — exclusion wins over discovery for that directory.
+
+How it interacts with `DefaultMaxDepth = 4`. Consider this layout:
+
+```text
+~/mono/                                                       depth 0
+├── team-a/                                                   depth 1
+│   └── service-x/                                            depth 2
+│       └── node_modules/...500 dirs.../leaf/  .git/          depth 3+ ← never walked
+└── team-b/proj/svc/                                          depth 4
+    └── mod/                                    .git/         depth 5  ← skipped by cap
+```
+
+With `excludeDirs: ["node_modules"]`:
+
+| Path | What happens | Why |
+|---|---|---|
+| `team-a/service-x/node_modules/...` | Pruned at depth 3 | `node_modules` matches the exclude basename → never enqueued, depth check never fires. The hundreds of nested directories inside cost zero budget. |
+| `team-b/proj/svc/mod/` (depth 5) | Still skipped | Exclude list does **not** raise the cap. Depth check fires at depth-5 enqueue and refuses. |
+| `team-b/proj/svc/` (depth 4) | Walked, no `.git` found | Inside the cap; its depth-5 children are not enqueued. |
+
+In other words: **the exclude list buys you walk speed, not walk
+depth.** A bloated `node_modules/` deep inside `team-a/` no longer
+slows the scan or eats the budget — but a legitimate repo that
+genuinely lives at depth 5 still requires either restructuring or
+the `ScanOptions.MaxDepth` library override.
+
+Edit the file, then re-run `gitmap scan <root>` (which overwrites
+`last-scan.json` and seeds future `gitmap rescan` calls with the new
+exclude list). The two-stage `data/config.json` validation added in
+v3.149.0 will reject malformed enums or missing required keys before
+the walker starts, so a typo here fails fast rather than silently
+expanding the walk.
+
 ---
 
 <div align="center">
