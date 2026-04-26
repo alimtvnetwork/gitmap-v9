@@ -80,6 +80,13 @@ const (
 	MsgStartupRemoveNoOp     = "  (no-op) no gitmap-managed entry named %q found\n"
 	MsgStartupRemoveNotOurs  = "  (refused) %q exists but was NOT created by gitmap — skipping\n"
 	MsgStartupRemoveBadName  = "  (refused) name %q is empty or contains a path separator\n"
+	// startup-remove --dry-run mirror messages. Same four outcomes,
+	// each prefixed with `(dry-run)` so log-scrapers can tell a
+	// preview from a real action without parsing flags.
+	MsgStartupRemoveDryOK      = "  (dry-run) would remove gitmap-managed autostart entry: %s\n"
+	MsgStartupRemoveDryNoOp    = "  (dry-run) no gitmap-managed entry named %q found — nothing to remove\n"
+	MsgStartupRemoveDryNotOurs = "  (dry-run) %q exists but was NOT created by gitmap — would refuse\n"
+	MsgStartupRemoveDryBadName = "  (dry-run) name %q is empty or contains a path separator — would refuse\n"
 	// startup-add result messages. One line per outcome so log
 	// scrapers can grep on the leading symbol/prefix.
 	MsgStartupAddCreated     = "✓ Created gitmap-managed autostart entry: %s\n"
@@ -129,4 +136,12 @@ const (
 	// CSV header row for `--format csv`. Kept here so the column
 	// order is centralized and tests can reference it.
 	StartupListCSVHeader = "name,path,exec"
+)
+
+// startup-remove CLI flag. Single boolean for now; kept in its own
+// const block so future flags (e.g. --trash, --backup-to) can land
+// alongside without disturbing the list-format block above.
+const (
+	FlagStartupRemoveDryRun     = "dry-run"
+	FlagDescStartupRemoveDryRun = "Show what would be deleted (or refused/no-op) without touching the filesystem"
 )
