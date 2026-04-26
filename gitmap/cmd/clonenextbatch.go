@@ -81,60 +81,8 @@ func processBatchRepos(repos []string, maxConcurrency int) []batchRowResult {
 	return out
 }
 
-// normalizeBatchWorkers clamps the requested worker count to the work
-// queue size. Mirrors cloner.normalizeWorkers; duplicated rather than
-// imported to keep the cmd package free of an internal cloner dep
-// (this helper is 5 lines — the cost is trivial).
-func normalizeBatchWorkers(requested, jobs int) int {
-	if requested < 1 {
-		return 1
-	}
-	if requested > jobs && jobs > 0 {
-		return jobs
-	}
-
-	return requested
-}
-
-// processBatchReposConcurrent fans out per-repo work across a bounded
-// pool. Each worker pulls one repo from the job channel and writes its
-// outcome to the result channel; we collect in completion order, then
-// re-sort by input index so the CSV report rows still match the
-// caller's repo list ordering.
-func processBatchReposConcurrent(repos []string, workers int) []batchRowResult {
-	type indexedJob struct {
-		idx  int
-		path string
-	}
-	type indexedResult struct {
-		idx int
-		row batchRowResult
-	}
-
-	jobs := make(chan indexedJob, len(repos))
-	results := make(chan indexedResult, len(repos))
-
-	for w := 0; w < workers; w++ {
-		go func() {
-			for j := range jobs {
-				results <- indexedResult{idx: j.idx, row: processOneBatchRepo(j.path)}
-			}
-		}()
-	}
-	for i, r := range repos {
-		jobs <- indexedJob{idx: i, path: r}
-	}
-	close(jobs)
-
-	out := make([]batchRowResult, len(repos))
-	for i := 0; i < len(repos); i++ {
-		r := <-results
-		out[r.idx] = r.row
-	}
-
-	return out
-}
-
+// (concurrent path lives in clonenextbatchconcurrent.go to keep this
+// file under the 200-line per-file budget.)
 // processOneBatchRepo computes the next version for a single repo,
 // checks GitHub for a higher -v<M> sibling, and either delegates to the
 // existing single-repo cn flow OR records a no-op when the local copy
