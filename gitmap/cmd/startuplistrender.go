@@ -100,25 +100,30 @@ const (
 	startupListJSONKeyExec = "exec"
 )
 
-// encodeStartupListJSON writes a JSON array to w using stablejson,
-// which builds each object key-by-key in caller-declared order
-// instead of relying on encoding/json's reflection-based struct
-// field iteration. This guarantees field order CANNOT drift even if
-// a future Go release (or encoding/json/v2) changes how struct
-// fields are walked. See gitmap/stablejson/stablejson.go for the
-// full rationale and byte-compat guarantee.
+// encodeStartupListJSON writes a JSON array to w using stablejson
+// at the long-standing 2-space-indent default. Thin wrapper around
+// encodeStartupListJSONIndent kept so existing contract tests (and
+// any future caller that doesn't care about indent) don't have to
+// thread a width parameter through every call site.
 //
-// `jsonIndent` controls whitespace ONLY: 0 emits a single-line
-// minified `[{"k":v}]\n` (matches `jq -c` framing), any positive
-// value N emits a pretty-printed document with N spaces per level.
-// Key order is identical across every indent value — the contract
-// test in startuplistjson_indent_contract_test.go pins this by
-// re-parsing each variant and comparing the key sequence.
+// Empty input still encodes as `[]\n` (NOT `null`) so jq pipelines
+// that do `length` work without conditionals.
+func encodeStartupListJSON(w io.Writer, entries []startup.Entry) error {
+	return encodeStartupListJSONIndent(w, entries, constants.StartupListJSONIndentDefault)
+}
+
+// encodeStartupListJSONIndent writes a JSON array with caller-
+// controlled per-level indent width. `jsonIndent==0` emits a
+// single-line minified `[{"k":v}]\n` (matches `jq -c` framing);
+// any positive N emits a pretty-printed document with N spaces per
+// level. Key order is identical across every indent value — the
+// contract test in startuplistjson_indent_contract_test.go pins
+// this by re-parsing each variant and comparing the key sequence.
 //
-// Empty input still encodes as `[]\n` regardless of indent (NOT
-// `null`, NOT zero bytes) so jq pipelines that do `length` work
-// without conditionals across all indent settings.
-func encodeStartupListJSON(w io.Writer, entries []startup.Entry, jsonIndent int) error {
+// stablejson handles the `[]\n` empty case identically across
+// indent values, so jq pipelines that do `length` keep working
+// regardless of which indent the user chose.
+func encodeStartupListJSONIndent(w io.Writer, entries []startup.Entry, jsonIndent int) error {
 	indent := indentSpaces(jsonIndent)
 
 	return stablejson.WriteArrayIndent(w, buildStartupListJSONItems(entries), indent)
