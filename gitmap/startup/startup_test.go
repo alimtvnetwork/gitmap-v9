@@ -9,15 +9,29 @@ import (
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
 )
 
-// withFakeAutostartDir points XDG_CONFIG_HOME at a temp dir so List /
-// Remove operate against an isolated tree, then returns the resolved
-// autostart path so the test can write fixtures into it.
+// withFakeAutostartDir points the OS-appropriate env var at a temp
+// dir so List / Remove operate against an isolated tree, then
+// returns the resolved autostart path so the test can write fixtures
+// into it.
+//
+//   - Linux/Unix: $XDG_CONFIG_HOME → <temp>/autostart
+//   - macOS:      $HOME            → <temp>/Library/LaunchAgents
+//   - Windows:    skipped (startup package returns an error)
 func withFakeAutostartDir(t *testing.T) string {
 	t.Helper()
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		t.Skip("startup package is Linux/Unix only")
+	if runtime.GOOS == "windows" {
+		t.Skip("startup package does not support Windows")
 	}
 	root := t.TempDir()
+	if runtime.GOOS == "darwin" {
+		t.Setenv("HOME", root)
+		dir := filepath.Join(root, "Library", "LaunchAgents")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+
+		return dir
+	}
 	t.Setenv("XDG_CONFIG_HOME", root)
 	dir := filepath.Join(root, "autostart")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
