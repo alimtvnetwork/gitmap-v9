@@ -76,9 +76,16 @@ type dirJob struct {
 }
 
 // RepoInfo holds raw data extracted from a discovered Git repo.
+//
+// Depth records the directory level at which the repo was found,
+// counted from the scan root (depth 0 = root itself, depth 1 = its
+// immediate children, …). Surfaced through ScanRecord.Depth so users
+// can audit which repos sit at the boundary of the configured
+// MaxDepth cap and decide whether to widen it.
 type RepoInfo struct {
 	AbsolutePath string
 	RelativePath string
+	Depth        int
 }
 
 // ScanProgress is a snapshot of in-flight scan counters delivered to a
