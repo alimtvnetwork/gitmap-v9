@@ -77,8 +77,13 @@ func TestList_OnlyReturnsManaged(t *testing.T) {
 
 // TestList_MissingDirReturnsEmpty confirms that a fresh user account
 // (no ~/.config/autostart at all) produces an empty list, NOT an
-// error. Idempotent CLI behavior demands this.
+// error. Idempotent CLI behavior demands this. Linux-only because
+// the env-var manipulation here targets XDG_CONFIG_HOME; the
+// equivalent macOS case is covered in plist_test.go.
 func TestList_MissingDirReturnsEmpty(t *testing.T) {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		t.Skip("Linux-only; macOS missing-dir behavior covered in plist_test.go")
+	}
 	root := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", root)
 	// Note: no autostart subdir created.
