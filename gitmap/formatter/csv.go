@@ -3,6 +3,7 @@ package formatter
 import (
 	"encoding/csv"
 	"io"
+	"strconv"
 
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/model"
@@ -72,8 +73,12 @@ func ParseCSV(reader io.Reader) ([]model.ScanRecord, error) {
 }
 
 // parseCSVRows converts raw CSV rows (skipping header) into records.
-// Supports both the legacy 8-column layout and the current 9-column layout
-// (which adds branchSource after branch).
+// Supports three layouts (auto-detected by column count) so older
+// CSVs keep round-tripping after the depth column was added:
+//
+//   - legacy 8 cols : pre-branchSource layout.
+//   - 9 cols        : pre-depth layout (branchSource present, depth absent).
+//   - 10 cols       : current layout (depth in trailing column).
 func parseCSVRows(rows [][]string) []model.ScanRecord {
 	records := make([]model.ScanRecord, 0, len(rows))
 	for i, row := range rows {
@@ -88,23 +93,41 @@ func parseCSVRows(rows [][]string) []model.ScanRecord {
 	return records
 }
 
-// rowToRecord maps a CSV row to a ScanRecord. Accepts both legacy (8 cols)
-// and current (9 cols including branchSource) layouts.
+// rowToRecord maps a CSV row to a ScanRecord. Dispatches on column
+// count to keep each branch under the 15-line function budget.
 func rowToRecord(row []string) model.ScanRecord {
 	if len(row) >= 9 {
-		notes := ""
-		if len(row) > 8 {
-			notes = row[8]
-		}
 
-		return model.ScanRecord{
-			RepoName: row[0], HTTPSUrl: row[1], SSHUrl: row[2],
-			Branch: row[3], BranchSource: row[4],
-			RelativePath: row[5], AbsolutePath: row[6],
-			CloneInstruction: row[7], Notes: notes,
+		return rowToRecordWithSource(row)
+	}
+
+	return rowToRecordLegacy(row)
+}
+
+// rowToRecordWithSource handles the 9-col (no depth) and 10-col
+// (with depth) layouts. Depth defaults to 0 when absent so legacy
+// CSVs surface as "root-level" rather than synthesizing a fake cap.
+func rowToRecordWithSource(row []string) model.ScanRecord {
+	depth := 0
+	if len(row) >= 10 {
+		parsed, err := strconv.Atoi(row[9])
+		if err == nil {
+			depth = parsed
 		}
 	}
 
+	return model.ScanRecord{
+		RepoName: row[0], HTTPSUrl: row[1], SSHUrl: row[2],
+		Branch: row[3], BranchSource: row[4],
+		RelativePath: row[5], AbsolutePath: row[6],
+		CloneInstruction: row[7], Notes: row[8],
+		Depth: depth,
+	}
+}
+
+// rowToRecordLegacy handles the pre-branchSource 8-col layout.
+// BranchSource and Depth are left at their zero values.
+func rowToRecordLegacy(row []string) model.ScanRecord {
 	notes := ""
 	if len(row) > 7 {
 		notes = row[7]
