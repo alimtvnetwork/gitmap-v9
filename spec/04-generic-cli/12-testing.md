@@ -4,6 +4,7 @@
 > - [08-code-style.md](08-code-style.md) — code style rules that tests must also follow
 > - [11-build-deploy.md](11-build-deploy.md) — build pipeline that executes tests
 > - [02-project-structure.md](02-project-structure.md) — test file placement within the package layout
+> - [25-e2e-testing-probe-clone-install.md](25-e2e-testing-probe-clone-install.md) — end-to-end test contract for probe, cloner, and install scripts
 
 ## Test Structure
 

@@ -11,6 +11,7 @@
 > [`../01-app/95-installer-script-find-latest-repo.md`](../01-app/95-installer-script-find-latest-repo.md).
 > Those documents remain valid; this spec is the single normative summary
 > a foreign AI should be handed.
+> **Tested by:** [`../04-generic-cli/25-e2e-testing-probe-clone-install.md`](../04-generic-cli/25-e2e-testing-probe-clone-install.md) — §6 covers strict-tag, sibling probe, latest-release, and main-HEAD fallback.
 
 ---
 
