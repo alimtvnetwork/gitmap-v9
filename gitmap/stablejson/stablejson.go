@@ -11,13 +11,13 @@
 // today — this is documented but informally so. Three forces could
 // break that contract:
 //
-//   1. Go 2 / encoding/json/v2 has been actively discussed; an early
-//      proposal floated alphabetical key ordering. Even if rejected,
-//      relying on the v1 quirk leaves us exposed.
-//   2. Reflection-based field walks change subtly when fields are
-//      added, removed, embedded, or marked omitempty.
-//   3. Code-mod tools (gofmt, IDE refactors, generated code) routinely
-//      reorder struct fields without warning.
+//  1. Go 2 / encoding/json/v2 has been actively discussed; an early
+//     proposal floated alphabetical key ordering. Even if rejected,
+//     relying on the v1 quirk leaves us exposed.
+//  2. Reflection-based field walks change subtly when fields are
+//     added, removed, embedded, or marked omitempty.
+//  3. Code-mod tools (gofmt, IDE refactors, generated code) routinely
+//     reorder struct fields without warning.
 //
 // stablejson sidesteps all three by NEVER reflecting on a struct.
 // The caller hands in an ordered slice of (key, value) pairs and the
