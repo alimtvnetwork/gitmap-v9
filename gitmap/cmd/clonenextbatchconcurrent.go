@@ -42,17 +42,21 @@ type indexedBatchResult struct {
 // outcome to the result channel; the collector re-orders by input
 // index so the CSV report rows still match the caller's repo list.
 //
+// `onResult` fires once per dequeued result (i.e. as workers finish,
+// not at the end) so callers can print real-time progress without
+// reaching into the pool internals. Safe to pass nil.
+//
 // Concurrency contract: processOneBatchRepo owns its own per-repo
 // state (probe, version read, row construction) and shares no mutable
 // data with peers, so no extra mutex is required here.
-func processBatchReposConcurrent(repos []string, workers int) []batchRowResult {
+func processBatchReposConcurrent(repos []string, workers int, onResult func(batchRowResult)) []batchRowResult {
 	jobs := make(chan indexedBatchJob, len(repos))
 	results := make(chan indexedBatchResult, len(repos))
 
 	startBatchWorkers(workers, jobs, results)
 	enqueueBatchJobs(repos, jobs)
 
-	return collectBatchResults(repos, results)
+	return collectBatchResults(repos, results, onResult)
 }
 
 // startBatchWorkers spins up the worker goroutines. Each one drains
@@ -77,12 +81,18 @@ func enqueueBatchJobs(repos []string, jobs chan<- indexedBatchJob) {
 }
 
 // collectBatchResults drains the result channel and slots each row
-// back into its input position.
-func collectBatchResults(repos []string, results <-chan indexedBatchResult) []batchRowResult {
+// back into its input position. `onResult` fires synchronously for
+// each dequeued row so the caller sees live "X done" feedback as
+// workers complete. The collector remains the single goroutine
+// touching the output slice — no locking required.
+func collectBatchResults(repos []string, results <-chan indexedBatchResult, onResult func(batchRowResult)) []batchRowResult {
 	out := make([]batchRowResult, len(repos))
 	for i := 0; i < len(repos); i++ {
 		r := <-results
 		out[r.idx] = r.row
+		if onResult != nil {
+			onResult(r.row)
+		}
 	}
 
 	return out

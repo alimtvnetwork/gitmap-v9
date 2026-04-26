@@ -89,4 +89,21 @@ const (
 	// BatchDetailUpToDate is the row's `detail` field when the local
 	// repo's version equals the highest existing remote sibling.
 	BatchDetailUpToDate = "no update needed"
+
+	// Real-time batch progress lines (v3.124.0+). Printed once per
+	// repo as workers finish, regardless of pool size, so users get
+	// live "X/Y done (ok=A failed=B skipped=C)" feedback during
+	// long batch runs instead of the previous all-or-nothing
+	// behavior where stdout went silent until every repo finished.
+	//
+	// Format choice: newline-per-update (no `\r` rewriting). Works
+	// uniformly in TTY, redirected log files, and CI captures —
+	// matches how scan's background-probe progress prints.
+	MsgCloneNextBatchProgressFmt = "  ▸ [%d/%d] %s — %s (ok=%d failed=%d skipped=%d)\n"
+
+	// FlagCloneNextNoProgress and FlagDescCloneNextNoProgress
+	// suppress the live per-repo progress line. The final summary
+	// is always printed.
+	FlagCloneNextNoProgress     = "no-progress"
+	FlagDescCloneNextNoProgress = "Suppress live per-repo progress lines (final summary still prints)"
 )
