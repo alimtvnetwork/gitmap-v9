@@ -67,9 +67,36 @@ const (
 	MsgStartupRemoveNoOp     = "  (no-op) no gitmap-managed entry named %q found\n"
 	MsgStartupRemoveNotOurs  = "  (refused) %q exists but was NOT created by gitmap — skipping\n"
 	MsgStartupRemoveBadName  = "  (refused) name %q is empty or contains a path separator\n"
+	// startup-add result messages. One line per outcome so log
+	// scrapers can grep on the leading symbol/prefix.
+	MsgStartupAddCreated     = "✓ Created gitmap-managed autostart entry: %s\n"
+	MsgStartupAddOverwritten = "✓ Overwrote gitmap-managed autostart entry: %s\n"
+	MsgStartupAddExists      = "  (exists) gitmap-managed entry already at %s — pass --force to overwrite\n"
+	MsgStartupAddRefused     = "  (refused) %q exists but was NOT created by gitmap — refusing to overwrite\n"
+	MsgStartupAddBadName     = "  (refused) name %q is empty or contains a path separator\n"
 	ErrStartupResolveDir     = "could not resolve autostart directory: %v"
 	ErrStartupReadDir        = "could not read autostart directory %s: %v"
 	ErrStartupRemoveUsage    = "usage: gitmap startup-remove <name>"
-	ErrStartupUnsupportedOS  = "startup-list / startup-remove are Linux/Unix-only " +
+	ErrStartupAddMissingExec = "startup-add: --exec is required " +
+		"(or run from an installed gitmap binary so we can auto-detect it)"
+	ErrStartupUnsupportedOS  = "startup commands are Linux/Unix-only " +
 		"(use the Windows startup commands on Windows)"
+)
+
+// startup-add CLI flag descriptions. Kept here (not in
+// constants_cli.go) so all startup-related strings live together and
+// the flag parser file imports just one constants block.
+const (
+	FlagStartupAddName        = "name"
+	FlagStartupAddExec        = "exec"
+	FlagStartupAddDisplay     = "display-name"
+	FlagStartupAddComment     = "comment"
+	FlagStartupAddNoDisplay   = "no-display"
+	FlagStartupAddForce       = "force"
+	FlagDescStartupAddName    = "Logical name for the entry (filename becomes gitmap-<name>.desktop). Required."
+	FlagDescStartupAddExec    = "Command to run at login (default: path to the running gitmap binary)"
+	FlagDescStartupAddDisplay = "Override the Name= field shown in desktop session managers"
+	FlagDescStartupAddComment = "Optional Comment= field text"
+	FlagDescStartupAddNoDisplay = "Set NoDisplay=true so the entry stays out of app menus"
+	FlagDescStartupAddForce   = "Overwrite an existing gitmap-managed entry (never overwrites third-party files)"
 )
