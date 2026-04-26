@@ -9,6 +9,7 @@
 | # | File | Task | Inference made |
 |---|------|------|----------------|
 | 01 | [01-json-schema-docs-scope.md](01-json-schema-docs-scope.md) | Generate JSON schema docs for each JSON output | Narrow scope: only stablejson-backed outputs (today: `startup-list --json`); JSON Schema 2020-12 + `propertyOrder` extension; hand-written; contract test guards drift; remaining 20 outputs tracked in `_TODO.md` |
+| 02 | [02-cmd-test-helper-duplicates.md](02-cmd-test-helper-duplicates.md) | (discovered during 01) Pre-existing duplicate helpers in `gitmap/cmd/` test files | Left existing files untouched; logged for separate cleanup task |
 
 ## How to read each entry
 
