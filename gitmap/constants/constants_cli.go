@@ -164,6 +164,14 @@ const (
 	// relative) directory so artifacts stay byte-stable across cwds.
 	FlagScanRelativeRoot     = "relative-root"
 	FlagDescScanRelativeRoot = "Pin the base directory used for output RelativePath (absolute or relative; must contain every scanned repo)"
+	// FlagScanMaxDepth caps how many directory levels below the scan root
+	// the walker may descend. Default 0 → resolves to scanner.DefaultMaxDepth
+	// (4) inside the scanner. Negative → unbounded (legacy behavior).
+	// Honored regardless of whether a `.git` was found on the path —
+	// repos already stop their own subtree as before.
+	FlagScanMaxDepth     = "max-depth"
+	FlagDescScanMaxDepth = "Max directory levels to descend below scan root (0 = default 4, negative = unlimited)"
+	DefaultScanMaxDepth  = 0
 	FlagDescSetupConfig   = "Path to git-setup.json config file"
 	FlagDescDryRun        = "Preview changes without applying them"
 	FlagDescAssets        = "Directory or file to attach to the release"
