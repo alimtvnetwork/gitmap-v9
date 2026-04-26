@@ -19,6 +19,7 @@ package startup
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
@@ -48,9 +49,10 @@ const (
 )
 
 // Remove deletes the named gitmap-managed autostart entry. `name`
-// is the basename WITHOUT the .desktop extension (the same form
-// `List` returns); a trailing `.desktop` is tolerated so users who
-// copy/paste from `ls` get the same behavior.
+// is the basename WITHOUT the platform extension (the same form
+// `List` returns); a trailing platform extension is tolerated so
+// users who copy/paste from `ls` get the same behavior. The
+// extension is `.desktop` on Linux/Unix and `.plist` on macOS.
 func Remove(name string) (RemoveResult, error) {
 	clean := normalizeName(name)
 	if !isValidName(clean) {
@@ -62,18 +64,18 @@ func Remove(name string) (RemoveResult, error) {
 
 		return RemoveResult{}, err
 	}
-	full := joinPath(dir, clean+constants.StartupDesktopExt)
+	full := joinPath(dir, clean+platformExt())
 
 	return removeIfManaged(full)
 }
 
-// normalizeName strips an optional .desktop suffix and surrounding
-// whitespace so `Remove("foo")`, `Remove("foo.desktop")`, and
-// `Remove(" foo ")` all resolve to the same target file.
+// normalizeName strips an optional platform extension and surrounding
+// whitespace so `Remove("foo")`, `Remove("foo.desktop")`/`("foo.plist")`,
+// and `Remove(" foo ")` all resolve to the same target file.
 func normalizeName(name string) string {
 	clean := strings.TrimSpace(name)
 
-	return strings.TrimSuffix(clean, constants.StartupDesktopExt)
+	return strings.TrimSuffix(clean, platformExt())
 }
 
 // isValidName rejects empty strings and any input containing a path
@@ -119,7 +121,9 @@ func removeIfManaged(full string) (RemoveResult, error) {
 // race between `startup-list` printing and the user typing
 // `startup-remove` cannot trick us into deleting a file that has
 // since been replaced by a third-party autostart entry with the same
-// name.
+// name. Dispatches to the per-OS parser since the marker grammar
+// differs (`X-Gitmap-Managed=true` line vs `<key>XGitmapManaged</key>
+// <true/>` plist element pair).
 func isManagedFile(path string) bool {
 	f, err := os.Open(path)
 	if err != nil {
@@ -128,7 +132,24 @@ func isManagedFile(path string) bool {
 	}
 	defer f.Close()
 
+	if runtime.GOOS == "darwin" {
+		managed, _ := parsePlistFields(f)
+
+		return managed
+	}
 	managed, _ := parseDesktopFields(newScanner(f))
 
 	return managed
+}
+
+// platformExt returns the autostart filename extension for the
+// running OS. Centralized so Remove and normalizeName agree without
+// either importing the runtime constant directly.
+func platformExt() string {
+	if runtime.GOOS == "darwin" {
+
+		return constants.StartupPlistExt
+	}
+
+	return constants.StartupDesktopExt
 }

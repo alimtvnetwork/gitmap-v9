@@ -1,13 +1,19 @@
 package startup
 
-// Internal helpers for parsing and filtering .desktop files. Split
+// Internal helpers for parsing and filtering autostart files. Split
 // from startup.go to keep both files under the per-file budget and so
 // the parser is independently testable without going through the
 // filesystem-coupled List API.
+//
+// This file owns the Linux/Unix `.desktop` path. The macOS `.plist`
+// path lives in plist.go. collectManaged is the OS-aware dispatcher
+// — it stays here (not in startup.go) so the per-OS reader functions
+// it calls are private to the package.
 
 import (
 	"bufio"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
@@ -15,18 +21,32 @@ import (
 
 // collectManaged scans `files` (a single ReadDir result) and returns
 // only the ones that BOTH match the gitmap filename prefix AND carry
-// the X-Gitmap-Managed=true marker key inside the file. The two-gate
-// check is deliberate: filename alone is spoofable; marker alone
-// would force us to read every .desktop file in the directory (slow
-// on systems with many startup entries).
+// the gitmap marker inside the file. The two-gate check is
+// deliberate: filename alone is spoofable; marker alone would force
+// us to read every file in the directory (slow on systems with many
+// startup entries).
+//
+// Dispatches to the per-OS reader. Anything other than darwin uses
+// the .desktop reader; darwin uses the .plist reader. Windows never
+// reaches here because AutostartDir errors first.
 func collectManaged(dir string, files []os.DirEntry) []Entry {
+	if runtime.GOOS == "darwin" {
+
+		return collectManagedPlist(dir, files)
+	}
+
+	return collectManagedDesktop(dir, files)
+}
+
+// collectManagedDesktop is the Linux/Unix reader.
+func collectManagedDesktop(dir string, files []os.DirEntry) []Entry {
 	var out []Entry
 	for _, f := range files {
 		if f.IsDir() {
 			continue
 		}
 		name := f.Name()
-		if !looksLikeOurs(name) {
+		if !looksLikeOursDesktop(name) {
 			continue
 		}
 		entry, ok := readManagedDesktop(dir, name)
@@ -39,10 +59,10 @@ func collectManaged(dir string, files []os.DirEntry) []Entry {
 	return out
 }
 
-// looksLikeOurs is the cheap pre-filter: filename must end in
-// `.desktop` AND start with the gitmap- prefix. Files that fail
-// either check are skipped without being opened.
-func looksLikeOurs(filename string) bool {
+// looksLikeOursDesktop is the cheap pre-filter for Linux: filename
+// must end in `.desktop` AND start with the gitmap- prefix. Files
+// that fail either check are skipped without being opened.
+func looksLikeOursDesktop(filename string) bool {
 	if !strings.HasSuffix(filename, constants.StartupDesktopExt) {
 		return false
 	}

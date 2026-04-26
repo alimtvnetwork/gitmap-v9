@@ -9,13 +9,18 @@ import (
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
 )
 
-// withFakeAutostartDir points XDG_CONFIG_HOME at a temp dir so List /
-// Remove operate against an isolated tree, then returns the resolved
-// autostart path so the test can write fixtures into it.
+// withFakeAutostartDir points $XDG_CONFIG_HOME at a temp dir so the
+// Linux-shape List / Remove tests below operate against an isolated
+// .desktop tree. Skipped on Windows (unsupported) and macOS (whose
+// LaunchAgent path is exercised by plist_test.go instead — those
+// tests use a different fixture format and dir layout).
 func withFakeAutostartDir(t *testing.T) string {
 	t.Helper()
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		t.Skip("startup package is Linux/Unix only")
+	if runtime.GOOS == "windows" {
+		t.Skip("startup package does not support Windows")
+	}
+	if runtime.GOOS == "darwin" {
+		t.Skip(".desktop tests are Linux-only; plist_test.go covers macOS")
 	}
 	root := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", root)
@@ -72,8 +77,13 @@ func TestList_OnlyReturnsManaged(t *testing.T) {
 
 // TestList_MissingDirReturnsEmpty confirms that a fresh user account
 // (no ~/.config/autostart at all) produces an empty list, NOT an
-// error. Idempotent CLI behavior demands this.
+// error. Idempotent CLI behavior demands this. Linux-only because
+// the env-var manipulation here targets XDG_CONFIG_HOME; the
+// equivalent macOS case is covered in plist_test.go.
 func TestList_MissingDirReturnsEmpty(t *testing.T) {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		t.Skip("Linux-only; macOS missing-dir behavior covered in plist_test.go")
+	}
 	root := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", root)
 	// Note: no autostart subdir created.
