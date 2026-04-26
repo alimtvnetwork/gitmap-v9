@@ -134,6 +134,14 @@ type CloneFlags struct {
 	FolderName     string
 	TargetDir      string
 	SSHKeyName     string
+	// DefaultBranch mirrors `gitmap scan --default-branch`: when a
+	// manifest row has an unknown / empty Branch (or a non-trustworthy
+	// BranchSource like "detached" or "unknown"), the cloner rebuilds
+	// the clone instruction as `git clone -b <DefaultBranch> ...`
+	// instead of letting the remote's default HEAD decide. Empty keeps
+	// the legacy behavior. Same constant powers both flags so the help
+	// wording stays byte-identical across surfaces.
+	DefaultBranch  string
 	Positional     []string
 	SafePull       bool
 	GHDesktop      bool
