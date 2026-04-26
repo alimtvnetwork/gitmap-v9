@@ -133,24 +133,9 @@ func Add(opts AddOptions) (AddResult, error) {
 	return writeManaged(full, clean, opts)
 }
 
-// addWindows is the Windows-only branch of Add. Routes through the
-// chosen backend (Registry or Startup-folder). Kept here (not in
-// winbackend.go) so the public Add API has one place readers find
-// the os-routing decision.
-func addWindows(clean string, opts AddOptions) (AddResult, error) {
-	backend := resolveBackendForAdd(opts.Backend)
-	switch backend {
-	case BackendRegistry:
-
-		return addWindowsRegistry(clean, opts)
-	case BackendStartupFolder:
-
-		return addWindowsStartupFolder(clean, opts)
-	default:
-
-		return AddResult{}, fmt.Errorf(constants.ErrStartupAddBadBackend, backend.String())
-	}
-}
+// addWindows lives in winbackend.go (kept with the other Windows
+// dispatch helpers so the public Add API has only the OS routing
+// switch in this file).
 
 // platformFilename picks the OS-specific filename shape. macOS uses
 // the reverse-DNS `gitmap.<name>.plist` convention; everything else
