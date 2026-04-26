@@ -32,6 +32,11 @@ type CloneNextFlags struct {
 	// pattern (see gitmap/cloner/concurrent.go). Ignored in single-repo
 	// mode where there is only one unit of work.
 	MaxConcurrency int
+	// NoProgress suppresses the live per-repo progress line printed
+	// by the batch collector as workers finish. The final summary
+	// (ok/failed/skipped totals) always prints regardless. Default
+	// false so users get progress feedback out-of-the-box.
+	NoProgress bool
 }
 
 // parseCloneNextFlags parses flags for the clone-next command.
