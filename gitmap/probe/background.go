@@ -113,9 +113,10 @@ func NewBackgroundRunner(workers, expectedJobs int, urlPick func(model.ScanRecor
 		return nil
 	}
 	r := &BackgroundRunner{
-		jobs:    make(chan model.ScanRecord, expectedJobs),
-		sink:    sink,
-		urlPick: urlPick,
+		jobs:       make(chan model.ScanRecord, expectedJobs),
+		sink:       sink,
+		urlPick:    urlPick,
+		cloneDepth: constants.ProbeDefaultDepth,
 	}
 	r.wg.Add(workers)
 	for i := 0; i < workers; i++ {
@@ -225,7 +226,7 @@ func (r *BackgroundRunner) probeOne(record model.ScanRecord) Result {
 		return Result{Method: constants.ProbeMethodNone, Error: "empty clone url"}
 	}
 
-	return RunOne(url)
+	return RunOneWithDepth(url, r.cloneDepth)
 }
 
 // tally updates per-bucket counters under the stats mutex. Split
