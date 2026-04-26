@@ -108,19 +108,33 @@ func buildTopItems(items []gitutil.RemoteBranchInfo, top int) []latestBranchTopI
 	return topItems
 }
 
-// printLatestCSV outputs the latest branch result as CSV.
+// printLatestCSV outputs the latest branch result as CSV to stdout.
 func printLatestCSV(items []gitutil.RemoteBranchInfo, remote string, top int) {
-	count := resolveTopCount(top, len(items))
-	w := csv.NewWriter(os.Stdout)
-	if err := w.Write(constants.LatestBranchCSVHeaders); err != nil {
-		fmt.Fprintf(os.Stderr, "  ✗ Failed to write CSV header: %v\n", err)
+	if err := encodeLatestBranchCSV(os.Stdout, items, remote, top); err != nil {
+		fmt.Fprintf(os.Stderr, "  ✗ Failed to write CSV: %v\n", err)
+	}
+}
 
-		return
+// encodeLatestBranchCSV writes the CSV to w. CRLF line endings are
+// forced for cross-platform byte-identical output (RFC 4180); pinned
+// by gitmap/cmd/csvcrlf_contract_test.go. Split out from
+// printLatestCSV so contract tests can capture bytes into a buffer.
+func encodeLatestBranchCSV(
+	w io.Writer, items []gitutil.RemoteBranchInfo, remote string, top int,
+) error {
+	count := resolveTopCount(top, len(items))
+	cw := csv.NewWriter(w)
+	cw.UseCRLF = true
+	if err := cw.Write(constants.LatestBranchCSVHeaders); err != nil {
+
+		return err
 	}
 	for _, item := range items[:count] {
-		writeCSVRow(w, item, remote)
+		writeCSVRow(cw, item, remote)
 	}
-	w.Flush()
+	cw.Flush()
+
+	return cw.Error()
 }
 
 // resolveTopCount determines how many items to display.

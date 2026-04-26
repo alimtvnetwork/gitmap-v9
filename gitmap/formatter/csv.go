@@ -17,6 +17,10 @@ func WriteCSV(w io.Writer, records []model.ScanRecord) error {
 	issueCount := emitValidationWarnings(records)
 
 	cw := csv.NewWriter(w)
+	// Force CRLF line endings on every row (header + data) so the
+	// output matches RFC 4180 and stays byte-identical between
+	// Linux/macOS and Windows runs. Pinned by csvcrlf_contract_test.go.
+	cw.UseCRLF = true
 	err := cw.Write(constants.ScanCSVHeaders)
 	if err != nil {
 		return err

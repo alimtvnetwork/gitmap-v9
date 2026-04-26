@@ -95,6 +95,9 @@ func encodeStartupListJSON(w io.Writer, entries []startup.Entry) error {
 // shell quoting and embedded spaces.
 func encodeStartupListCSV(w io.Writer, entries []startup.Entry) error {
 	cw := csv.NewWriter(w)
+	// CRLF for cross-platform byte-identical output (RFC 4180).
+	// Pinned by gitmap/cmd/csvcrlf_contract_test.go.
+	cw.UseCRLF = true
 	if err := cw.Write([]string{"name", "path", "exec"}); err != nil {
 
 		return err
