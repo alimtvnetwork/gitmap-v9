@@ -379,21 +379,23 @@ func isGitdirFile(path string) bool {
 	return strings.HasPrefix(string(buf[:n]), gitdirPrefix)
 }
 
-// handleSubdir applies the exclude filter and enqueues the subdir for
-// further walking. `.git` is handled by the caller (processDir) so it is
-// never seen here.
-func (st *scanState) handleSubdir(parent string, entry os.DirEntry) {
+// handleSubdir applies the exclude filter and enqueues the subdir at
+// `childDepth` for further walking. `.git` is handled by the caller
+// (processDir) so it is never seen here. Caller is responsible for
+// ensuring childDepth is in budget — handleSubdir itself does not
+// re-check, since processDir's outer guard already did.
+func (st *scanState) handleSubdir(parent string, childDepth int, entry os.DirEntry) {
 	name := entry.Name()
 	if st.exclude[name] {
 		return
 	}
-	st.enqueue(filepath.Join(parent, name))
+	st.enqueue(dirJob{path: filepath.Join(parent, name), depth: childDepth})
 }
 
-// enqueue dispatches a directory for processing.
-func (st *scanState) enqueue(path string) {
+// enqueue dispatches a directory job for processing.
+func (st *scanState) enqueue(job dirJob) {
 	st.wg.Add(1)
-	st.queue <- path
+	st.queue <- job
 }
 
 // recordRepo appends a discovered repo (parent of the .git dir) under
