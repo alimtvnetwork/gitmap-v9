@@ -77,7 +77,7 @@ func runClone(args []string) {
 	}
 
 	source := resolveCloneShorthand(cf.Source)
-	executeClone(source, cf.TargetDir, cf.SafePull, cf.GHDesktop, cf.MaxConcurrency)
+	executeClone(source, cf.TargetDir, cf.SafePull, cf.GHDesktop, cf.MaxConcurrency, cf.DefaultBranch)
 }
 
 // shouldUseMultiClone returns true when the positional args describe a
