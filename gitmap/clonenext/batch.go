@@ -243,3 +243,27 @@ func absoluteAndSorted(paths []string) []string {
 
 	return out
 }
+
+// HasGitSubdir reports whether `root` contains at least one immediate
+// child directory that is itself a git repo. Designed for the cn
+// dispatcher's implicit-batch trigger: it short-circuits on the first
+// hit, so the cost is bounded to one ReadDir + at most one Stat per
+// candidate up to the first match. Returns false on any I/O error so
+// the dispatcher fails closed (single-repo path → clean "no remote"
+// error) rather than guessing.
+func HasGitSubdir(root string) bool {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if IsGitRepo(filepath.Join(root, entry.Name())) {
+			return true
+		}
+	}
+
+	return false
+}
