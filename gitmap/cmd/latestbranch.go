@@ -21,6 +21,9 @@ type latestBranchConfig struct {
 	shouldFetch      bool
 	sortBy           string
 	filter           string
+	// shouldSwitch toggles the post-report `git checkout` performed by
+	// maybeSwitchToLatest. Wired to `--switch` and its short form `-s`.
+	shouldSwitch bool
 }
 
 // runLatestBranch handles the 'latest-branch' / 'lb' command.
@@ -33,6 +36,7 @@ func runLatestBranch(args []string) {
 	items := readAndSortBranches(refs, cfg.sortBy)
 	result := resolveLatestResult(items, cfg)
 	dispatchLatestOutput(result, items, cfg)
+	maybeSwitchToLatest(result, cfg)
 }
 
 // validateLatestBranchRepo exits if the current directory is outside a git repo.
