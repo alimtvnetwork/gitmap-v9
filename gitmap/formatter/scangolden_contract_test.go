@@ -48,6 +48,7 @@ func canonicalScanRecords() []model.ScanRecord {
 			AbsolutePath:     "/repos/acme/widget",
 			CloneInstruction: "git clone https://github.com/acme/widget.git",
 			Notes:            "",
+			Depth:            1,
 		},
 		{
 			ID: 2, Slug: "acme/gadget", RepoName: "gadget",
@@ -59,6 +60,10 @@ func canonicalScanRecords() []model.ScanRecord {
 			AbsolutePath:     "/repos/acme/gadget",
 			CloneInstruction: "git clone -b develop https://github.com/acme/gadget.git",
 			Notes:            "pinned to develop",
+			// Depth 4 = at the DefaultMaxDepth boundary; this is exactly
+			// the row a user would inspect to decide whether to widen
+			// --max-depth before the next scan.
+			Depth: 4,
 		},
 	}
 }
