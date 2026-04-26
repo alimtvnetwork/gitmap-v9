@@ -93,6 +93,7 @@ func parseCloneNextFlags(args []string) CloneNextFlags {
 		MaxConcurrency: *maxConcFlag,
 		NoProgress:     *noProgressFlag,
 		ReportErrors:   *reportErrFlag,
+		DryRun:         *dryRunFlag,
 	}
 	if fs.NArg() > 0 {
 		out.VersionArg = fs.Arg(0)
