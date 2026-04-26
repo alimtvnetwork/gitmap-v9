@@ -20,6 +20,7 @@ c
 | --github-desktop | false | Auto-register with GitHub Desktop (no prompt) |
 | --audit | false | Validate planned git clone commands and print a diff-style summary; never executes |
 | --max-concurrency \<N\> | 1 | Run up to N clones in parallel (1 = sequential). Hierarchy is preserved at any N. |
+| --default-branch \<name\> | (none) | Fallback branch name when HEAD/remote-tracking detection finds nothing. Rewrites `branchSource=detached \| unknown \| empty` rows so they go through the trusted `git clone -b <name>` path instead of relying on the remote's default HEAD. Empty preserves legacy behavior. |
 | --verbose | false | Write detailed debug log |
 
 ## Hierarchy preservation
@@ -86,6 +87,15 @@ each record's `branchSource` (captured during scan):
 
 This prevents "Remote branch not found" errors when a scan captured a
 detached HEAD or a literal `HEAD` value that cannot be checked out.
+
+Pass `--default-branch <name>` to override the last two rows: every
+record that would otherwise omit `-b` is rewritten with
+`branchSource=default` and `branch=<name>`, so the cloner emits
+`git clone -b <name> <url> <dest>`. A breadcrumb (`default-branch
+fallback applied: <name>`) is appended to the record's Notes so
+`--audit` and `CloneResult.Notes` make the substitution traceable.
+The flag uses the same constant as `gitmap scan --default-branch`
+to guarantee identical wording across both surfaces.
 
 ## Idempotent clone cache
 

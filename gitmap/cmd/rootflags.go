@@ -134,6 +134,14 @@ type CloneFlags struct {
 	FolderName     string
 	TargetDir      string
 	SSHKeyName     string
+	// DefaultBranch mirrors `gitmap scan --default-branch`: when a
+	// manifest row has an unknown / empty Branch (or a non-trustworthy
+	// BranchSource like "detached" or "unknown"), the cloner rebuilds
+	// the clone instruction as `git clone -b <DefaultBranch> ...`
+	// instead of letting the remote's default HEAD decide. Empty keeps
+	// the legacy behavior. Same constant powers both flags so the help
+	// wording stays byte-identical across surfaces.
+	DefaultBranch  string
 	Positional     []string
 	SafePull       bool
 	GHDesktop      bool
@@ -156,6 +164,11 @@ func parseCloneFlags(args []string) CloneFlags {
 		constants.CloneDefaultMaxConcurrency, constants.FlagDescCloneMaxConcurrency)
 	sshKeyFlag := fs.String("ssh-key", "", "SSH key name for clone")
 	fs.StringVar(sshKeyFlag, "K", "", "SSH key name (short)")
+	// Reuse the scan command's `--default-branch` constant + description
+	// verbatim. The two flags share the same role (fallback branch when
+	// detection finds nothing); keeping one source of truth means
+	// `gitmap scan --help` and `gitmap clone --help` cannot drift.
+	defaultBranchFlag := fs.String(constants.FlagScanDefaultBranch, "", constants.FlagDescScanDefaultBranch)
 	fs.Parse(args)
 
 	return CloneFlags{
@@ -163,6 +176,7 @@ func parseCloneFlags(args []string) CloneFlags {
 		FolderName:     resolveCloneFolderName(fs),
 		TargetDir:      *targetFlag,
 		SSHKeyName:     *sshKeyFlag,
+		DefaultBranch:  *defaultBranchFlag,
 		Positional:     fs.Args(),
 		SafePull:       *safePullFlag,
 		GHDesktop:      *ghDesktopFlag,

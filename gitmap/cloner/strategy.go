@@ -87,3 +87,53 @@ func pickCloneStrategy(rec model.ScanRecord) cloneStrategy {
 		reason: "branchSource=" + rec.BranchSource + " (unrecognized); using remote default HEAD",
 	}
 }
+
+// applyDefaultBranchFallback rewrites records whose recorded
+// (Branch, BranchSource) pair would otherwise leave the cloner with
+// no branch to check out — i.e., where pickCloneStrategy returns
+// useBranch=false. When `fallback` is non-empty, those records are
+// rebuilt with Branch=fallback and BranchSource=BranchSourceDefault
+// so the existing "trusted default" path takes over and emits
+// `git clone -b <fallback> ...`. A breadcrumb is appended to Notes
+// so audits and CloneResult.Notes can show that the value came from
+// the CLI fallback, not from the original scan.
+//
+// Records that already have a usable branch are returned unchanged.
+// The input slice is never mutated; a fresh slice is returned. When
+// `fallback` is empty the input slice is returned as-is, preserving
+// the legacy "remote default HEAD" behavior bit-for-bit.
+func applyDefaultBranchFallback(records []model.ScanRecord, fallback string) []model.ScanRecord {
+	if len(fallback) == 0 {
+
+		return records
+	}
+	out := make([]model.ScanRecord, len(records))
+	for i, rec := range records {
+		if pickCloneStrategy(rec).useBranch {
+			out[i] = rec
+
+			continue
+		}
+		patched := rec
+		patched.Branch = fallback
+		patched.BranchSource = gitutil.BranchSourceDefault
+		patched.Notes = appendFallbackNote(rec.Notes, fallback)
+		out[i] = patched
+	}
+
+	return out
+}
+
+// appendFallbackNote appends a breadcrumb that the default-branch
+// fallback was applied. Kept as its own helper so the formatting
+// stays consistent across audit / clone-result surfaces and so the
+// 15-line function budget for applyDefaultBranchFallback is preserved.
+func appendFallbackNote(existing, fallback string) string {
+	note := "default-branch fallback applied: " + fallback
+	if len(existing) == 0 {
+
+		return note
+	}
+
+	return existing + "; " + note
+}

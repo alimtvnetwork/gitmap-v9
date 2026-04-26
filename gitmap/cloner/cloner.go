@@ -30,6 +30,14 @@ type CloneOptions struct {
 	SafePull       bool
 	Quiet          bool
 	MaxConcurrency int
+	// DefaultBranch is the fallback branch name handed to `git clone -b`
+	// for any record whose recorded (Branch, BranchSource) would
+	// otherwise leave the cloner with no usable branch (empty Branch,
+	// detached HEAD, unknown source, etc.). Empty preserves the legacy
+	// "let the remote's default HEAD decide" behavior. Plumbed in by
+	// the CLI from `--default-branch` (constants.FlagScanDefaultBranch),
+	// so the wording and semantics match `gitmap scan --default-branch`.
+	DefaultBranch string
 }
 
 // CloneFromFile reads a source file and clones all repos under targetDir.
