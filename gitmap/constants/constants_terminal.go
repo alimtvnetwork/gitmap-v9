@@ -190,7 +190,7 @@ const (
 // CSV headers.
 var ScanCSVHeaders = []string{
 	"repoName", "httpsUrl", "sshUrl", "branch", "branchSource",
-	"relativePath", "absolutePath", "cloneInstruction", "notes",
+	"relativePath", "absolutePath", "cloneInstruction", "notes", "depth",
 }
 
 var LatestBranchCSVHeaders = []string{
