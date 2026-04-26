@@ -25,7 +25,7 @@ const (
 // Startup help text. Format mirrors HelpInstall / HelpUninstall so
 // the rendered `gitmap help` table stays visually consistent.
 const (
-	HelpStartupAdd    = "  startup-add (sa)          Create a Linux/Unix autostart entry pointing at gitmap"
+	HelpStartupAdd    = "  startup-add (sa)          Create a Linux/Unix or macOS autostart entry pointing at gitmap"
 	HelpStartupList   = "  startup-list (sl)         List Linux/Unix autostart entries created by gitmap"
 	HelpStartupRemove = "  startup-remove (sr) <name> Remove a gitmap-managed autostart entry by name"
 )
