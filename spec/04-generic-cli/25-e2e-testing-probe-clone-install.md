@@ -140,42 +140,170 @@ e2e jobs with network disabled where the runner allows.
 ## 4. Probe layer e2e tests
 
 Under test: `gitmap/probe/probe.go` (`RunOne`) and
-`gitmap/probe/clone.go` (`tryShallowClone`).
+`gitmap/probe/clone.go` (`tryShallowClone`), driven through the public
+CLI surface `gitmap probe <URL>` (and `gitmap probe <URL> --json`) so
+the tests exercise the same code path real users hit.
+
+### 4.0 Per-scenario contract (read first)
+
+Every P-scenario in §4.1–§4.3 **MUST** be expressed with the same five
+sections so the test body can be generated mechanically:
+
+1. **Fixture preconditions** — exact fixture-builder calls and any
+   filesystem state that must exist *before* the command runs.
+2. **CLI invocation** — the literal `argv` passed to the gitmap binary
+   under test (built once per `TestMain` via `go build -o ./gitmap-e2e`).
+   `${URL}` is the bare-repo `file://` URL from §3.
+3. **Expected stdout / stderr / exit code** — asserted with substring
+   matches against `constants.MsgProbe*` / `constants.ErrProbe*` (never
+   hard-coded literals, per §7.5).
+4. **Expected DB delta** — exact row(s) inserted into `VersionProbe`
+   (and any tagging on `Repo`). Compared via `db.LatestVersionProbe`
+   (or equivalent helper), never raw SQL.
+5. **Cleanup assertions** — invariants that must hold *after* the
+   command returns: temp-dir count delta, no orphan `gitmap-probe-*`
+   dirs, no stray `git` child processes, no rows in unexpected tables.
+
+A shared helper `runProbeCLI(t, args ...string) cliResult` returns
+`{Stdout, Stderr, ExitCode, Duration}` and registers the §4.3 leak
+guard via `t.Cleanup`.
 
 ### 4.1 Required test classes (MUST)
 
-| ID | Scenario | Fixture | Expected |
-|----|----------|---------|----------|
-| P1 | ls-remote returns highest semver tag | `NewBareRepo("v1.0.0", "v1.0.5", "v1.0.20")` | `Result.NextVersionTag == "v1.0.20"`, `Method == constants.ProbeMethodLsRemote`, `IsAvailable == true` |
-| P2 | Remote has commits but zero tags | `NewBareRepoNoTags()` | `IsAvailable == false`, `Error == ""`, `Method` set |
-| P3 | Empty / unreachable URL | `cloneURL = ""` | `Result.Error == "empty clone url"`, `Method == constants.ProbeMethodNone` |
-| P4 | Malformed URL (`not-a-url`) | literal | `IsAvailable == false`, `Error` populated, no panic |
-| P5 | Annotated-tag dereference (`v1.0.0^{}`) | bare repo with `git tag -a v1.0.0 -m x` | Returns `v1.0.0` (suffix stripped) |
-| P6 | Pre-release suffix sorts correctly | `NewBareRepo("v1.0.0", "v1.0.1-rc1", "v1.0.1")` | Top is `v1.0.1`, `parseSemverInt` matches |
+#### P1 — ls-remote returns highest semver tag
+
+- **Preconditions:** `repo := fixture.NewBareRepo(t, "v1.0.0", "v1.0.5", "v1.0.20")`.
+  DB pre-seeded with one `Repo` row whose `HTTPSUrl == repo.URL` (use
+  `db.UpsertRepo`). `VersionProbe` table empty for this `RepoId`.
+- **CLI:** `gitmap-e2e probe ${repo.URL}`
+- **Stdout:** contains `fmt.Sprintf(constants.MsgProbeOkFmt, <slug>, "v1.0.20", constants.ProbeMethodLsRemote)`
+  and `fmt.Sprintf(constants.MsgProbeDoneFmt, 1, 0, 0)`.
+- **Stderr:** empty.
+- **Exit code:** `0`.
+- **DB delta:** exactly one new `VersionProbe` row with
+  `NextVersionTag == "v1.0.20"`, `NextVersionNum == 20`,
+  `Method == constants.ProbeMethodLsRemote`, `IsAvailable == 1`,
+  `Error == ""`. `Repo.ScanFolderId` unchanged.
+- **Cleanup:** §4.3 temp-dir delta = 0; no `gitmap-probe-*` directories
+  remain; the bare repo at `repo.Dir` is byte-identical to its
+  pre-test snapshot (compare via `fixture.HashTree`).
+
+#### P2 — Remote has commits but zero tags
+
+- **Preconditions:** `repo := fixture.NewBareRepoNoTags(t)`. DB has one
+  `Repo` row for `repo.URL`.
+- **CLI:** `gitmap-e2e probe ${repo.URL}`
+- **Stdout:** contains `fmt.Sprintf(constants.MsgProbeNoneFmt, <slug>, constants.ProbeMethodLsRemote)`
+  and `fmt.Sprintf(constants.MsgProbeDoneFmt, 0, 1, 0)`.
+- **Stderr:** empty.
+- **Exit code:** `0`.
+- **DB delta:** one new `VersionProbe` row with `NextVersionTag == ""`,
+  `NextVersionNum == 0`, `IsAvailable == 0`, `Error == ""`,
+  `Method == constants.ProbeMethodLsRemote`.
+- **Cleanup:** §4.3 invariant; no shallow-clone temp dir was created
+  (assert via temp-dir snapshot — proves the no-tags branch did not
+  fall through to clone).
+
+#### P3 — Repo row exists with empty clone URL
+
+- **Preconditions:** insert a `Repo` row whose `HTTPSUrl == ""` and
+  `SSHUrl == ""` (slug `orphan`). No fixture bare repo needed.
+- **CLI:** `gitmap-e2e probe <slug-path>` where `<slug-path>` resolves
+  to that repo via `db.FindByPath`.
+- **Stdout:** contains `fmt.Sprintf(constants.MsgProbeDoneFmt, 0, 0, 1)`.
+- **Stderr:** contains `fmt.Sprintf(constants.ErrProbeMissingURL, "orphan")`.
+- **Exit code:** `0` (the loop tallies a failure but does not abort).
+- **DB delta:** one new `VersionProbe` row with
+  `Method == constants.ProbeMethodNone`, `IsAvailable == 0`,
+  `Error == fmt.Sprintf(constants.ErrProbeMissingURL, "orphan")`.
+- **Cleanup:** §4.3 invariant; no `git` subprocess was spawned (assert
+  by wrapping `PATH` to a `git` shim that records invocations).
+
+#### P4 — Malformed URL
+
+- **Preconditions:** DB has a `Repo` row whose `HTTPSUrl == "not-a-url"`.
+- **CLI:** `gitmap-e2e probe <that-repo-path>`
+- **Stdout:** contains `fmt.Sprintf(constants.MsgProbeFailFmt, <slug>, <error-substring>)`
+  and `fmt.Sprintf(constants.MsgProbeDoneFmt, 0, 0, 1)`.
+- **Stderr:** empty (per-repo errors go to stdout via `MsgProbeFailFmt`).
+- **Exit code:** `0`. **MUST NOT** panic (asserted by the absence of
+  `panic:` in combined output).
+- **DB delta:** one new `VersionProbe` row, `IsAvailable == 0`, `Error`
+  non-empty, `Method` ∈ {`ls-remote`, `shallow-clone`}.
+- **Cleanup:** §4.3 invariant; any temp clone dir created during the
+  shallow-clone attempt is removed.
+
+#### P5 — Annotated-tag dereference (`v1.0.0^{}`)
+
+- **Preconditions:** build the bare repo manually (helper variant
+  `fixture.NewBareRepoAnnotated(t, "v1.0.0")`) using
+  `git tag -a v1.0.0 -m x`. Confirm via
+  `git ls-remote ${repo.URL}` that output contains both `refs/tags/v1.0.0`
+  and `refs/tags/v1.0.0^{}`.
+- **CLI:** `gitmap-e2e probe ${repo.URL}`
+- **Stdout:** contains `"v1.0.0"` (the `^{}` suffix **MUST NOT** appear).
+- **Exit code:** `0`.
+- **DB delta:** `VersionProbe.NextVersionTag == "v1.0.0"` exactly.
+- **Cleanup:** §4.3 invariant.
+
+#### P6 — Pre-release sort order
+
+- **Preconditions:** `fixture.NewBareRepo(t, "v1.0.0", "v1.0.1-rc1", "v1.0.1")`.
+- **CLI:** `gitmap-e2e probe ${repo.URL} --json`
+- **Stdout:** valid JSON array of length 1; the entry has
+  `nextVersionTag == "v1.0.1"` and `nextVersionNum == 1`.
+- **Stderr:** empty.
+- **Exit code:** `0`.
+- **DB delta:** one `VersionProbe` row matching the JSON.
+- **Cleanup:** §4.3 invariant.
 
 ### 4.2 Shallow-clone fallback (MUST)
 
-ID **P7**: simulate ls-remote failure by pointing at a directory that
-exists but is not a git repo (`os.MkdirAll(<tmp>/notagit, 0o755)` then
-`url := "file://<tmp>/notagit"`). Assert:
+#### P7 — ls-remote fails, shallow-clone is reached and also fails
 
-- `tryLsRemote` returns `ok == false`.
-- `tryShallowClone` is reached and returns a non-nil error wrapped with
-  `constants.ErrProbeCloneFail`.
-- `os.RemoveAll` removed the temp dir (assert no `gitmap-probe-*`
-  directories remain in `os.TempDir()` after the test — see §4.3).
+- **Preconditions:** `dir := filepath.Join(t.TempDir(), "notagit")`,
+  `os.MkdirAll(dir, 0o755)`. DB has a `Repo` row with
+  `HTTPSUrl == "file://" + dir`.
+- **CLI:** `gitmap-e2e probe <that-repo-path>`
+- **Stdout:** contains `fmt.Sprintf(constants.MsgProbeFailFmt, <slug>, <err>)`.
+- **Stderr:** empty.
+- **Exit code:** `0`.
+- **DB delta:** one `VersionProbe` row with
+  `Method == constants.ProbeMethodShallowClone`, `IsAvailable == 0`,
+  and `Error` matching `constants.ErrProbeCloneFail` format
+  (assert with `strings.HasPrefix` after stripping the `%v`).
+- **Cleanup:** §4.3 invariant — *strictly* zero `gitmap-probe-*`
+  entries in `os.TempDir()` after the run, even though shallow-clone
+  created one mid-flight. Test fails if any remain.
 
-ID **P8**: ls-remote succeeds returning zero tags (`NewBareRepoNoTags`)
-but shallow-clone is also exercised when configured. Assert
-`makeResult("", method)` returns `IsAvailable == false` without
-falling through to clone.
+#### P8 — ls-remote succeeds with zero tags; shallow-clone MUST NOT run
+
+- **Preconditions:** `repo := fixture.NewBareRepoNoTags(t)`. Wrap `git`
+  on `PATH` with a shim that records every invocation.
+- **CLI:** `gitmap-e2e probe ${repo.URL}`
+- **Stdout:** as P2.
+- **Exit code:** `0`.
+- **DB delta:** one `VersionProbe` row, `Method == ls-remote`,
+  `IsAvailable == 0`.
+- **Cleanup:** the recorded git shim log **MUST NOT** contain a
+  `clone` invocation. §4.3 invariant holds.
 
 ### 4.3 Temp-dir cleanup invariant (MUST)
 
-ID **P9**: snapshot the count of `gitmap-probe-*` entries in
-`os.TempDir()` before and after every probe test. The delta **MUST** be
-zero. Implement as a shared `t.Cleanup` registered by a helper
-`assertNoTempLeak(t)`.
+#### P9 — Zero leak across the full P1–P8 matrix
+
+- **Preconditions:** `before := fixture.SnapshotTempProbeDirs()` taken
+  in `TestMain` before any P-scenario runs.
+- **Mechanism:** `assertNoTempLeak(t)` is registered via `t.Cleanup`
+  inside the shared `runProbeCLI` helper, so every P1–P8 test
+  re-asserts the invariant on its own.
+- **CLI:** N/A (cross-cutting).
+- **Stdout/stderr/exit:** N/A.
+- **DB delta:** none beyond what each individual scenario records.
+- **Cleanup assertion:** `after := fixture.SnapshotTempProbeDirs()`
+  in `TestMain`'s teardown. `len(after) == len(before)` and the
+  set difference is empty. Any extra entry fails the suite with the
+  offending paths printed.
 
 ### 4.4 Optional (SHOULD)
 
