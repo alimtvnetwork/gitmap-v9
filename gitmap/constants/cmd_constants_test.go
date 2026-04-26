@@ -163,6 +163,8 @@ func topLevelCmds() map[string]string {
 		"CmdSEOWrite":                 CmdSEOWrite,
 		"CmdSEOWriteAlias":            CmdSEOWriteAlias,
 		"CmdSSH":                      CmdSSH,
+		"CmdStartupAdd":               CmdStartupAdd,
+		"CmdStartupAddAlias":          CmdStartupAddAlias,
 		"CmdStartupList":              CmdStartupList,
 		"CmdStartupListAlias":         CmdStartupListAlias,
 		"CmdStartupRemove":            CmdStartupRemove,
