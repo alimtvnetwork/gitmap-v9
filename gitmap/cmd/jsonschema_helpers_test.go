@@ -1,11 +1,16 @@
 package cmd
 
-// Generic JSON-schema test helpers shared by all
-// `*_jsonschema_contract_test.go` files in this package. Pulled out
-// of startuplist_jsonschema_contract_test.go so that file stays
-// under the 200-line budget AND so future schemas (see
+// JSON-schema test helpers shared by all
+// `*_jsonschema_contract_test.go` files. Pulled out of
+// startuplist_jsonschema_contract_test.go so that file stays under
+// the 200-line budget AND so future schemas (see
 // spec/08-json-schemas/_TODO.md) can reuse the same primitives
 // without copy-paste.
+//
+// Deliberately small surface area: only file-locator + schema-load
+// + propertyOrder-extraction live here. Generic primitives like
+// `equalStringSlices`, `expectDelim`, and `collectObjectKeys`
+// already exist in jsonsnapshot_helpers_test.go and are reused.
 //
 // All helpers are test-only (suffix `_test.go`) so they don't bloat
 // the production binary.
@@ -20,9 +25,9 @@ import (
 
 // findSchemaFile resolves a schema filename to an absolute path by
 // walking up from the test's CWD (Go sets it to the package dir,
-// i.e. gitmap/cmd) until it finds a `spec/08-json-schemas/` sibling.
-// Same idiom used by other gitmap contract tests that need to read
-// project-relative fixtures.
+// i.e. gitmap/cmd) until it finds a `spec/08-json-schemas/`
+// sibling. Same idiom used by other gitmap contract tests that need
+// to read project-relative fixtures.
 func findSchemaFile(t *testing.T, filename string) string {
 	t.Helper()
 	dir, err := os.Getwd()
@@ -32,7 +37,6 @@ func findSchemaFile(t *testing.T, filename string) string {
 	for i := 0; i < 8; i++ {
 		candidate := filepath.Join(dir, "spec", "08-json-schemas", filename)
 		if _, err := os.Stat(candidate); err == nil {
-
 			return candidate
 		}
 		parent := filepath.Dir(dir)
@@ -83,62 +87,22 @@ func stringSliceFromAny(v any) []string {
 	return out
 }
 
-// equalStringSlices is an order-sensitive compare. Avoids a
-// reflect.DeepEqual import for one line of logic.
-func equalStringSlices(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
 // extractFirstObjectKeyOrder uses json.Decoder's token stream to
 // recover the literal on-the-wire key order of the first object
-// inside a top-level array. encoding/json's standard Unmarshal into
+// inside a top-level array. Standard json.Unmarshal into
 // map[string]any would lose ordering (Go maps are unordered); the
 // Token API preserves it because it walks the raw bytes
-// left-to-right.
+// left-to-right. Reuses `expectDelim` and `collectObjectKeys` from
+// jsonsnapshot_helpers_test.go to keep the helper surface small.
 func extractFirstObjectKeyOrder(t *testing.T, data []byte) []string {
 	t.Helper()
 	dec := json.NewDecoder(bytes.NewReader(data))
-	expectDelim(t, dec, '[')
-	expectDelim(t, dec, '{')
-	var keys []string
-	for dec.More() {
-		tok, err := dec.Token()
-		if err != nil {
-			t.Fatalf("token: %v", err)
-		}
-		key, ok := tok.(string)
-		if !ok {
-			t.Fatalf("expected key string, got %T (%v)", tok, tok)
-		}
-		keys = append(keys, key)
-		if _, err := dec.Token(); err != nil {
-			t.Fatalf("value token: %v", err)
-		}
+	if err := expectDelim(dec, '['); err != nil {
+		t.Fatalf("opening array: %v", err)
+	}
+	if err := expectDelim(dec, '{'); err != nil {
+		t.Fatalf("opening object: %v", err)
 	}
 
-	return keys
-}
-
-// expectDelim consumes one delimiter token and fails the test if it
-// is not the expected rune. Pulled out so extractFirstObjectKeyOrder
-// stays under the 15-line per-function budget.
-func expectDelim(t *testing.T, dec *json.Decoder, want json.Delim) {
-	t.Helper()
-	tok, err := dec.Token()
-	if err != nil {
-		t.Fatalf("expected delim %v, got error: %v", want, err)
-	}
-	got, ok := tok.(json.Delim)
-	if !ok || got != want {
-		t.Fatalf("expected delim %v, got %v", want, tok)
-	}
+	return collectObjectKeys(t, dec)
 }
