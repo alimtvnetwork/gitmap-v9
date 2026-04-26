@@ -172,5 +172,5 @@ const (
 	// MsgScanProbeSkippedAutoFmt prints when the auto-trigger
 	// declined to start (repo count above the ceiling) so users
 	// understand why no probe ran.
-	MsgScanProbeSkippedAutoFmt = "  · Background probe skipped: %d repos exceeds auto-trigger ceiling (%d). Pass --probe-concurrency to force.\n"
+	MsgScanProbeSkippedAutoFmt = "  · Background probe skipped: %d repos exceeds auto-trigger ceiling (%d). Pass --probe-workers to force.\n"
 )
