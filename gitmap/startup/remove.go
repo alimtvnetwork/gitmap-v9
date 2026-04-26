@@ -126,16 +126,23 @@ func isValidName(name string) bool {
 }
 
 // removeIfManaged runs the existence + managed-marker checks and
-// performs the unlink. Splits cleanly into four mutually-exclusive
-// branches so the caller's switch on RemoveStatus is exhaustive.
-func removeIfManaged(full string) (RemoveResult, error) {
+// performs the unlink (unless opts.DryRun is set). Splits cleanly
+// into four mutually-exclusive branches so the caller's switch on
+// RemoveStatus is exhaustive. The dry-run branch returns the SAME
+// status the live branch would have returned — only os.Remove is
+// suppressed — so renderers can preview accurately.
+func removeIfManaged(full string, opts RemoveOptions) (RemoveResult, error) {
 	if _, err := os.Stat(full); os.IsNotExist(err) {
 
-		return RemoveResult{Status: RemoveNoOp}, nil
+		return RemoveResult{Status: RemoveNoOp, DryRun: opts.DryRun}, nil
 	}
 	if !isManagedFile(full) {
 
-		return RemoveResult{Status: RemoveRefused, Path: full}, nil
+		return RemoveResult{Status: RemoveRefused, Path: full, DryRun: opts.DryRun}, nil
+	}
+	if opts.DryRun {
+
+		return RemoveResult{Status: RemoveDeleted, Path: full, DryRun: true}, nil
 	}
 	if err := os.Remove(full); err != nil {
 
