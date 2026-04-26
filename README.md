@@ -556,9 +556,76 @@ unbounded):
 # `gitmap scan` stays fast and bounded by default.
 ```
 
-A `depth` value equal to the cap (`4` under defaults) in your CSV is
-the diagnostic signal: those rows sit on the boundary and are the
-candidates to investigate when something seems missing.
+#### Reading at-cap CSV rows and rescanning a deeper subfolder
+
+A `depth` value equal to the cap (`4` under defaults) is the
+diagnostic signal you should learn to read. It does not mean "this
+repo is 4 levels deep and that's all there is to know" — it means
+**this row sits on the boundary, and any repos hidden in its
+subtree were silently skipped on this scan**. Rows with `depth < 4`
+are unambiguous: the walker reached them and recorded them, full
+stop. Rows with `depth == 4` are the "investigate this" pile.
+
+How to interpret a single row at a glance:
+
+| `depth` value in the row | What it tells you | Action |
+|---|---|---|
+| `0`–`3` | Discovered well inside the cap. Nothing under it could have been skipped *for cap reasons* (rule 2 / exclude list still apply). | None — trust the row. |
+| `4` (= `DefaultMaxDepth`) | Discovered exactly at the cap. The walker did NOT enqueue its depth-5+ children. If you expected nested repos under this row, they were silently dropped. | Re-scan that one subtree (recipe below). |
+| (negative or absent) | You're not on a current build, or the column was stripped by post-processing. | Re-run with the latest `gitmap` binary; the column has been mandatory since v3.150.0. |
+
+**Spot-check recipe — find every at-cap row in one shell pipe:**
+
+```bash
+# CSV — assumes the default header order (depth is column 10)
+gitmap scan ~/code --output csv | awk -F, 'NR>1 && $10==4 {print $7}'
+
+# JSON — same idea, jq filter
+gitmap scan ~/code --output json | jq -r '.[] | select(.depth==4) | .absolutePath'
+```
+
+Each printed `absolutePath` is a candidate for the deeper-subfolder
+rescan below.
+
+**Rescan recipe — point the CLI at the deeper subfolder:**
+
+When an at-cap row hides nested repos you actually want catalogued,
+the simplest, most predictable fix is to re-run `gitmap scan` with
+the at-cap directory itself as the new root. Depth resets to `0` at
+the new root, so the cap effectively shifts 4 levels deeper into
+the original tree:
+
+```bash
+# Original scan caps out — say team-c/area/group/proj/svc/ shows depth=4
+gitmap scan ~/mono --output csv
+
+# Re-aim the CLI at the at-cap directory; depth resets to 0 there,
+# so its children (which were depth-5 in the original scan) are now
+# depth-1 in the new scan and get walked normally.
+gitmap scan ~/mono/team-c/area/group/proj/svc --output csv
+```
+
+Two important properties of this recipe:
+
+- **It does not modify the original `last-scan.json`'s root**, so
+  `gitmap rescan` from the parent shell will still replay the
+  original `~/mono` scan. The deeper-subfolder run is its own
+  independent scan-cycle (its own root, its own cached parameters,
+  its own database upserts). If you want the deeper root to become
+  the *default* for future `gitmap rescan`, run the deeper command
+  from the same shell and it will overwrite `last-scan.json`.
+- **It composes additively in the database.** Repos discovered by
+  the deeper scan are upserted by `absolutePath`, so a repo that
+  appears in both the shallow and deep scans is one row in the DB,
+  not two. There's no risk of duplicate entries from running both.
+
+When you genuinely need a single command that crosses the cap (e.g.
+in CI where re-rooting per subtree is awkward), the library-level
+override is `ScanOptions.MaxDepth = -1` for unbounded walks; this
+is intentionally not exposed as a CLI flag so casual `gitmap scan`
+invocations stay fast and bounded by default. See the
+[scanner package docs](gitmap/scanner/scanner.go) for the call
+shape.
 
 #### CSV column reference — the 10 columns, in order
 
