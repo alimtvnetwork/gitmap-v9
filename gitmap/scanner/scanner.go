@@ -295,25 +295,44 @@ func walkParallel(root string, exclude map[string]bool, workers, maxDepth int, p
 // Otherwise a single-pass loop would enqueue earlier-listed subdirs
 // (e.g. `outer/submodule/`) before discovering `.git` later in the same
 // readdir, violating the "do not descend into a discovered repo" rule.
-func (st *scanState) processDir(dir string) {
-	entries, err := os.ReadDir(dir)
+func (st *scanState) processDir(job dirJob) {
+	entries, err := os.ReadDir(job.path)
 	st.dirsWalked.Add(1)
 	if err != nil {
 		st.recordErr(err)
 
 		return
 	}
-	if st.containsGitMarker(dir, entries) {
-		st.recordRepo(dir)
+	if st.containsGitMarker(job.path, entries) {
+		st.recordRepo(job.path)
 
+		return
+	}
+	// Children sit one level deeper. Skip the descend pass entirely
+	// when even the closest child would exceed the depth budget — no
+	// allocation, no enqueue, no spurious wg traffic.
+	if !st.depthAllows(job.depth + 1) {
 		return
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
-		st.handleSubdir(dir, entry)
+		st.handleSubdir(job.path, job.depth+1, entry)
 	}
+}
+
+// depthAllows reports whether a job at the given depth may still be
+// enqueued. Negative maxDepth disables the cap (legacy behavior). The
+// scan root is depth 0, its children depth 1, and so on, so a cap of 4
+// permits depths 0..4 inclusive (four levels of subdirectories below
+// the root).
+func (st *scanState) depthAllows(depth int) bool {
+	if st.maxDepth < 0 {
+		return true
+	}
+
+	return depth <= st.maxDepth
 }
 
 // containsGitMarker reports whether `dir` is a git repo root. A directory
