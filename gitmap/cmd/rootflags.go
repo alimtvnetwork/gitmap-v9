@@ -164,6 +164,11 @@ func parseCloneFlags(args []string) CloneFlags {
 		constants.CloneDefaultMaxConcurrency, constants.FlagDescCloneMaxConcurrency)
 	sshKeyFlag := fs.String("ssh-key", "", "SSH key name for clone")
 	fs.StringVar(sshKeyFlag, "K", "", "SSH key name (short)")
+	// Reuse the scan command's `--default-branch` constant + description
+	// verbatim. The two flags share the same role (fallback branch when
+	// detection finds nothing); keeping one source of truth means
+	// `gitmap scan --help` and `gitmap clone --help` cannot drift.
+	defaultBranchFlag := fs.String(constants.FlagScanDefaultBranch, "", constants.FlagDescScanDefaultBranch)
 	fs.Parse(args)
 
 	return CloneFlags{
@@ -171,6 +176,7 @@ func parseCloneFlags(args []string) CloneFlags {
 		FolderName:     resolveCloneFolderName(fs),
 		TargetDir:      *targetFlag,
 		SSHKeyName:     *sshKeyFlag,
+		DefaultBranch:  *defaultBranchFlag,
 		Positional:     fs.Args(),
 		SafePull:       *safePullFlag,
 		GHDesktop:      *ghDesktopFlag,
