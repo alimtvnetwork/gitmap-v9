@@ -47,13 +47,9 @@ describe("DocsTooltip — fallback wrapper marker", () => {
     expect(wrapper?.getAttribute(FALLBACK_ATTR)).toBe("true");
   });
 
-  it("sets the marker when child is a fragment", () => {
+  it("sets the marker when child is null", () => {
     const { container } = renderWithProvider(
-      <DocsTooltip label="Hint">
-        <>
-          <span>fragment</span>
-        </>
-      </DocsTooltip>,
+      <DocsTooltip label="Hint">{null}</DocsTooltip>,
     );
     const wrapper = container.querySelector(`[${FALLBACK_ATTR}]`);
     expect(wrapper).not.toBeNull();
