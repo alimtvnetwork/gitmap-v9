@@ -10,7 +10,9 @@ selected SSH/HTTPS mode.
 gitmap clone-now <file>                            # dry-run (default)
 gitmap clone-now <file> --execute                  # actually clone
 gitmap clone-now <file> --mode ssh --execute       # use SSH URLs
-gitmap cnow <file> --execute                       # short alias
+gitmap cnow     <file> --execute                   # short alias
+gitmap relclone <file> --execute                   # explicit "re-clone" verb
+gitmap rc       <file> --execute                   # short alias of relclone
 ```
 
 ## Arguments
@@ -42,16 +44,43 @@ Redirect example: `gitmap clone-now repos.json --execute --output terminal > pre
 
 ## Input formats
 
-`clone-now` consumes the same files `gitmap scan` writes:
+`clone-now` consumes the same files `gitmap scan` writes. Auto-detect
+maps the file extension as follows; anything else exits with a clear
+"unsupported file extension" error -- pass `--format` to override.
 
-- **JSON** -- `repos.json`: array of `ScanRecord` objects (`repoName`,
-  `httpsUrl`, `sshUrl`, `branch`, `relativePath`, ...).
-- **CSV** -- `repos.csv`: header row + one data row per repo (the
-  format produced by `gitmap scan`'s default CSV output).
-- **Text** -- `repos.txt` (or any `.txt` / unknown extension): one
-  `git clone <url> [dest]` line per repo. Blank lines and `#`
-  comments are ignored. Branch info is not preserved in this format
-  -- use JSON or CSV if you need branch pinning.
+| Extension | Parser | Notes |
+|---|---|---|
+| `.json` | JSON | Array of `ScanRecord` objects (see fields below). |
+| `.csv`  | CSV  | Header row + one data row per repo. |
+| `.txt`  | text | One `git clone <url> [dest]` line per repo; `#` comments and blank lines ignored. Branch is **not** preserved -- use JSON or CSV if you need branch pinning. |
+
+### JSON / CSV fields
+
+JSON keys are camelCase; CSV columns share the same names (10-column
+layout produced by `gitmap scan`). A row is **clonable** when at
+least one of `httpsUrl` / `sshUrl` is set.
+
+| Field | Required | Used for | Notes |
+|---|---|---|---|
+| `repoName` | recommended | display, dest fallback | Shown in progress / summary lines. |
+| `httpsUrl` | one of two | `--mode https` clone URL | Falls back to `sshUrl` if empty. |
+| `sshUrl`   | one of two | `--mode ssh` clone URL   | Falls back to `httpsUrl` if empty. |
+| `branch` | optional | `git clone -b <branch>` | Empty = clone default branch. |
+| `branchSource` | informational | provenance only | Ignored by the executor. |
+| `relativePath` | recommended | clone destination (relative to `--cwd`) | If empty, derived from URL basename (sans `.git`). |
+| `absolutePath` | informational | provenance only | Ignored by the executor. |
+| `cloneInstruction` | informational | display only | The original `git clone ...` line; not re-executed. |
+| `notes` | informational | display only | Free-form. |
+| `depth` | informational | reserved | Currently ignored (no `--depth` support yet). |
+
+### Text-format line shape
+
+```
+git clone [<flags>] <url> [<dest>]
+```
+
+`-b <branch>` flags are stripped (text format does not preserve
+branch). `<dest>` falls back to the URL basename when omitted.
 
 ## Behavior
 
@@ -90,8 +119,9 @@ Re-clone everything under a mirror root using SSH:
 gitmap clone-now .gitmap/output/repos.csv --mode ssh --cwd ./mirror --execute
 ```
 
-Force the text-format parser on a renamed file:
+Force the JSON parser on a file with a non-standard extension
+(auto-detect would otherwise reject `.list`):
 
 ```
-gitmap clone-now my-repos.list --format text --execute
+gitmap clone-now my-repos.list --format json --execute
 ```
