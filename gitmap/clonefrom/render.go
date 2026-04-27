@@ -110,19 +110,29 @@ func cloneCommandForRow(r Row, dest string) string {
 	if r.Depth > 0 {
 		parts = append(parts, fmt.Sprintf(constants.CloneFromDepthFlagFmt, r.Depth))
 	}
+	if EffectiveCheckout(r) == constants.CloneFromCheckoutSkip {
+		parts = append(parts, constants.CloneFromNoCheckoutFlag)
+	}
 	parts = append(parts, r.URL, dest)
 
 	return strings.Join(parts, " ")
 }
 
-// renderRow formats one row's four-line block. Pure function so
-// it's trivially testable without spinning up a buffer/writer.
+// renderRow formats one row's block. The first four lines match the
+// pre-checkout-feature output byte-for-byte (locked by render_test.go
+// + downstream log scrapers); the optional fifth `checkout:` line is
+// appended ONLY when the resolved mode is non-default ("skip" or
+// "force") so existing fixtures and grep expectations stay valid for
+// the common case.
 func renderRow(n int, r Row) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "  %d. %s\n", n, r.URL)
 	fmt.Fprintf(&sb, "     dest:   %s\n", displayDest(r))
 	fmt.Fprintf(&sb, "     branch: %s\n", displayBranch(r))
 	fmt.Fprintf(&sb, "     depth:  %s\n", displayDepth(r))
+	if mode := EffectiveCheckout(r); mode != constants.CloneFromCheckoutDefault {
+		fmt.Fprintf(&sb, "     checkout: %s\n", mode)
+	}
 
 	return sb.String()
 }
