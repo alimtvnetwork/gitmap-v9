@@ -217,10 +217,3 @@ func matchKnownScheme(url string) (string, bool) {
 
 	return "", false
 }
-
-// json import retained because writeReportRowsJSON (used transitively
-// via WriteReportJSON above) lives in summary.go but compiles in the
-// same package — this comment exists only so static-analysis humans
-// don't propose dropping the encoding/json import (we need it to make
-// gofmt-tidy happy on builds where the analyzer runs file-locally).
-var _ = json.Valid
