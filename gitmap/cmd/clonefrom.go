@@ -116,15 +116,36 @@ func parseCloneFromFlags(args []string) cloneFromFlags {
 		constants.FlagDescCloneVerifyCmdFaithfulExitOnMismatch)
 	fs.BoolVar(&cfg.printCloneArgv, constants.FlagClonePrintArgv,
 		false, constants.FlagDescClonePrintArgv)
+	fs.StringVar(&cfg.checkout, constants.FlagCloneFromCheckout, "",
+		constants.FlagDescCloneFromCheckout)
 	reordered := reorderFlagsBeforeArgs(args)
 	fs.Parse(reordered)
 	if fs.NArg() < 1 {
 		fmt.Fprintln(os.Stderr, constants.MsgCloneFromMissingArg)
 		os.Exit(2)
 	}
+	validateCheckoutFlag(cfg.checkout)
 	cfg.file = fs.Arg(0)
 
 	return cfg
+}
+
+// validateCheckoutFlag exits 2 when --checkout is set to anything
+// other than the empty string or one of the three concrete modes.
+// Empty is allowed and means "fall back to per-row + the built-in
+// default" — same as omitting the flag entirely.
+func validateCheckoutFlag(v string) {
+	if len(v) == 0 {
+		return
+	}
+	switch v {
+	case constants.CloneFromCheckoutAuto,
+		constants.CloneFromCheckoutSkip,
+		constants.CloneFromCheckoutForce:
+		return
+	}
+	fmt.Fprintf(os.Stderr, constants.MsgCloneFromBadCheckoutFlag+"\n", v)
+	os.Exit(2)
 }
 
 // runCloneFromDry renders the dry-run preview and exits with the
