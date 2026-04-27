@@ -162,10 +162,15 @@ const (
 	ErrStartupListBadJSONIndent   = "startup-list: --json-indent %d out of range (expected: 0..8)"
 )
 
-// startup-remove CLI flag. Single boolean for now; kept in its own
-// const block so future flags (e.g. --trash, --backup-to) can land
-// alongside without disturbing the list-format block above.
+// startup-remove CLI flags. --backend mirrors the same flag on
+// startup-add so a user can scope a removal to one Windows backend
+// (registry or startup-folder) instead of the legacy dual-backend
+// fallback. Linux/macOS callers ignore --backend — there's only one
+// autostart backend per OS.
 const (
 	FlagStartupRemoveDryRun     = "dry-run"
 	FlagDescStartupRemoveDryRun = "Show what would be deleted (or refused/no-op) without touching the filesystem"
+	FlagStartupRemoveBackend    = "backend"
+	FlagDescStartupRemoveBackend = "Windows backend to remove from: registry or startup-folder " +
+		"(default: try both — registry first, then startup-folder)"
 )
