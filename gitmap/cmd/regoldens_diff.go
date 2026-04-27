@@ -84,26 +84,41 @@ func collectGoldenDiffEntries() ([]goldenDiffEntry, error) {
 	return mergeStatusAndNumstat(statuses, numstat), nil
 }
 
-// readPorcelainStatuses returns a map of testdata/ path -> status
-// letter from `git status --porcelain`. Untracked entries (`??`)
-// are normalized to "A" (added) for cleaner display.
-func readPorcelainStatuses() (map[string]string, error) {
+// readPorcelainStatuses returns a map of testdata/ path -> entry
+// (status letter + optional renamedFrom) from `git status --porcelain`.
+// Untracked entries (`??`) are normalized to "A" (added).
+func readPorcelainStatuses() (map[string]goldenDiffEntry, error) {
 	out, err := runGitCapture("status", "--porcelain", "--", "*"+goldenDiffPathFragment+"*")
 	if err != nil {
 		return nil, err
 	}
-	result := make(map[string]string)
+	result := make(map[string]goldenDiffEntry)
 	for _, line := range strings.Split(out, "\n") {
 		if len(line) < 4 {
 			continue
 		}
-		path := strings.TrimSpace(line[3:])
+		path, from := splitPorcelainPath(line[3:])
 		if !strings.Contains(path, goldenDiffPathFragment) {
 			continue
 		}
-		result[path] = normalizePorcelainStatus(strings.TrimSpace(line[:2]))
+		result[path] = goldenDiffEntry{
+			status:      normalizePorcelainStatus(strings.TrimSpace(line[:2])),
+			path:        path,
+			renamedFrom: from,
+		}
 	}
 	return result, nil
+}
+
+// splitPorcelainPath extracts (newPath, oldPath) from the path
+// portion of a porcelain status line. Renames are formatted as
+// "old -> new"; everything else is a plain path. Whitespace is
+// trimmed in either branch.
+func splitPorcelainPath(raw string) (newPath, oldPath string) {
+	if idx := strings.Index(raw, " -> "); idx >= 0 {
+		return strings.TrimSpace(raw[idx+4:]), strings.TrimSpace(raw[:idx])
+	}
+	return strings.TrimSpace(raw), ""
 }
 
 // normalizePorcelainStatus collapses git's two-letter porcelain
@@ -117,11 +132,11 @@ func normalizePorcelainStatus(code string) string {
 	if strings.Contains(code, "D") {
 		return "D"
 	}
-	if strings.Contains(code, "A") {
-		return "A"
-	}
 	if strings.Contains(code, "R") {
 		return "R"
+	}
+	if strings.Contains(code, "A") {
+		return "A"
 	}
 	return "M"
 }
