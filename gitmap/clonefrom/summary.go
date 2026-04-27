@@ -135,3 +135,38 @@ func writeReportRows(w io.Writer, results []Result) error {
 
 	return cw.Error()
 }
+
+// reportRowJSON is the on-disk JSON shape per result. Field names
+// (and JSON tags) mirror the CSV column set 1:1 so consumers can
+// flip --report-format json|csv without a schema delta. Keep this
+// type private; the only path to a JSON report is writeReportRowsJSON.
+type reportRowJSON struct {
+	URL             string  `json:"url"`
+	Dest            string  `json:"dest"`
+	Branch          string  `json:"branch"`
+	Depth           int     `json:"depth"`
+	Status          string  `json:"status"`
+	Detail          string  `json:"detail"`
+	DurationSeconds float64 `json:"duration_seconds"`
+}
+
+// writeReportRowsJSON emits the result set as a JSON array. Always
+// writes `[]` for the empty case (never `null`) so jq pipelines and
+// downstream parsers can treat the file as an unconditional array.
+// Trailing newline matches POSIX text-file convention so editors
+// don't flag the file as missing-final-newline.
+func writeReportRowsJSON(w io.Writer, results []Result) error {
+	rows := make([]reportRowJSON, 0, len(results))
+	for _, r := range results {
+		rows = append(rows, reportRowJSON{
+			URL: r.Row.URL, Dest: r.Dest, Branch: r.Row.Branch,
+			Depth: r.Row.Depth, Status: r.Status, Detail: r.Detail,
+			DurationSeconds: r.Duration.Seconds(),
+		})
+	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
+
+	return enc.Encode(rows)
+}
