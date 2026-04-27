@@ -45,17 +45,17 @@ func withIsolatedAppData(t *testing.T) string {
 	return dir
 }
 
-// cleanupRegistryEntry deletes both the Run-key value pair AND the
-// tracking subkey created by an Add. Used by t.Cleanup to keep the
-// real HKCU clean — the registry constants are NOT overrideable
-// without invasive refactoring, so we touch real HKCU and clean up.
+// cleanupRegistryEntry deletes the Run-key value AND the tracking
+// subkey created by an Add. Used by t.Cleanup to keep the real
+// HKCU clean — the registry constants are NOT overrideable without
+// invasive refactoring, so we touch real HKCU and clean up. No
+// sibling-marker delete: the direct-value model never writes one.
 func cleanupRegistryEntry(t *testing.T, clean string) {
 	t.Helper()
 	valueName := constants.StartupWinValuePrefix + clean
 	if k, err := registry.OpenKey(registry.CURRENT_USER,
 		constants.RegRunKeyPath, registry.SET_VALUE); err == nil {
 		k.DeleteValue(valueName)
-		k.DeleteValue(valueName + constants.RegMarkerSiblingSuffix)
 		k.Close()
 	}
 	registry.DeleteKey(registry.CURRENT_USER,
