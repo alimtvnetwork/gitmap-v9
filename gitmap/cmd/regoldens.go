@@ -168,19 +168,28 @@ func runGoTestPass(cfg regoldensFlags, withGate bool) int {
 // never inherits a leaked GITMAP_UPDATE_GOLDEN from the developer's
 // shell — the whole reason this command exists.
 func buildPassEnv(withGate bool) []string {
-	parent := os.Environ()
+	out := stripGoldenGateVars(os.Environ())
+	if !withGate {
+
+		return out
+	}
+
+	return append(out,
+		goTestUpdateTriggerEnv+"="+goTestUpdateEnvValue,
+		goldenguard.AllowUpdateEnv+"="+goTestUpdateEnvValue,
+	)
+}
+
+// stripGoldenGateVars filters parent env entries, dropping any
+// gate-related KEY=value pair so a leaked shell export cannot
+// influence the child process.
+func stripGoldenGateVars(parent []string) []string {
 	out := make([]string, 0, len(parent)+2)
 	for _, kv := range parent {
 		if isGoldenGateVar(kv) {
 			continue
 		}
 		out = append(out, kv)
-	}
-	if withGate {
-		out = append(out,
-			goTestUpdateTriggerEnv+"="+goTestUpdateEnvValue,
-			goldenguard.AllowUpdateEnv+"="+goTestUpdateEnvValue,
-		)
 	}
 
 	return out
