@@ -54,13 +54,30 @@ type WriterFn func() ([]byte, error)
 // multiple writers can pinpoint which one drifted.
 func AssertWriterDeterministic(t *testing.T, label string, writer WriterFn) {
 	t.Helper()
+	assertWriterDeterministicOn(t, label, writer)
+}
+
+// fataler is the slice of *testing.T used by the determinism check.
+// Pulled out as an interface so unit tests can supply a fake that
+// records Fatalf calls without aborting the test runner. Real users
+// always pass a *testing.T.
+type fataler interface {
+	Helper()
+	Fatalf(format string, args ...interface{})
+}
+
+// assertWriterDeterministicOn is the interface-based core. The
+// public AssertWriterDeterministic is a thin shim so callers don't
+// have to know about the fataler abstraction.
+func assertWriterDeterministicOn(t fataler, label string, writer WriterFn) {
+	t.Helper()
 	runs, err := collectWriterRuns(writer)
 	if err != nil {
 		t.Fatalf("goldenguard: writer %q failed during determinism check: %v",
 			label, err)
 		return
 	}
-	assertAllRunsEqual(t, label, runs)
+	assertAllRunsEqualOn(t, label, runs)
 }
 
 // collectWriterRuns invokes writer determinismRunCount times and
