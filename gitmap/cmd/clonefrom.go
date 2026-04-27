@@ -38,6 +38,11 @@ type cloneFromFlags struct {
 	// the legacy 4-line block; "terminal" renders the standardized
 	// branch/from/to/command block shared with scan, clone-next, probe.
 	output string
+	// checkout sets the GLOBAL default checkout mode. Empty string
+	// → falls back to constants.CloneFromCheckoutDefault. Per-row
+	// `checkout` field always wins. Validated up-front so a typo
+	// fails before any clone runs.
+	checkout string
 	// verifyCmdFaithful enables the dry-run argv-vs-displayed checker.
 	verifyCmdFaithful bool
 	// verifyCmdFaithfulExitOnMismatch upgrades the verifier into a
