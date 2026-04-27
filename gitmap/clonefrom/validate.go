@@ -140,8 +140,8 @@ func dedupRows(rows []Row) []Row {
 }
 
 // mergeRows overlays the later row's optional fields onto the
-// earlier row. Branch/depth take the later value if the later
-// value is non-empty/non-zero.
+// earlier row. Branch/depth/checkout take the later value if the
+// later value is non-empty/non-zero.
 func mergeRows(first, later Row) Row {
 	out := first
 	if len(later.Branch) > 0 {
@@ -149,6 +149,9 @@ func mergeRows(first, later Row) Row {
 	}
 	if later.Depth > 0 {
 		out.Depth = later.Depth
+	}
+	if len(later.Checkout) > 0 {
+		out.Checkout = later.Checkout
 	}
 
 	return out
