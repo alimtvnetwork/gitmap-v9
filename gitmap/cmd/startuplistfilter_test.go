@@ -11,10 +11,10 @@ import (
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/startup"
 )
 
-// fixtureEntries returns one entry for each shape startup.List can
+// fixtureStartupEntries returns one entry for each shape startup.List can
 // produce so a single slice covers Linux/.desktop, macOS/.plist,
 // Windows/registry, and Windows/startup-folder.
-func fixtureEntries() []startup.Entry {
+func fixtureStartupEntries() []startup.Entry {
 	return []startup.Entry{
 		{Name: "gitmap-watch.desktop",
 			Path: "/home/me/.config/autostart/gitmap-watch.desktop",
@@ -35,7 +35,7 @@ func fixtureEntries() []startup.Entry {
 // in the original order — important because the renderer iterates
 // the slice as-is and we don't want a hidden reorder.
 func TestFilterStartupList_NoFilters(t *testing.T) {
-	in := fixtureEntries()
+	in := fixtureStartupEntries()
 	got := filterStartupList(in, "", "")
 	if len(got) != len(in) {
 		t.Fatalf("len = %d, want %d", len(got), len(in))
@@ -51,7 +51,7 @@ func TestFilterStartupList_NoFilters(t *testing.T) {
 // Path starts with `HKCU\` — the discriminator runValuePath emits
 // in startup/winregistry_windows.go.
 func TestFilterStartupList_BackendRegistry(t *testing.T) {
-	got := filterStartupList(fixtureEntries(), "registry", "")
+	got := filterStartupList(fixtureStartupEntries(), "registry", "")
 	if len(got) != 1 {
 		t.Fatalf("len = %d, want 1; got %#v", len(got), got)
 	}
@@ -64,7 +64,7 @@ func TestFilterStartupList_BackendRegistry(t *testing.T) {
 // entry — the `.lnk` extension is the cross-platform discriminator
 // the .desktop / .plist entries can never share.
 func TestFilterStartupList_BackendStartupFolder(t *testing.T) {
-	got := filterStartupList(fixtureEntries(), "startup-folder", "")
+	got := filterStartupList(fixtureStartupEntries(), "startup-folder", "")
 	if len(got) != 1 {
 		t.Fatalf("len = %d, want 1; got %#v", len(got), got)
 	}
@@ -78,7 +78,7 @@ func TestFilterStartupList_BackendStartupFolder(t *testing.T) {
 // produced by Add — proving the prefix/suffix stripping in
 // logicalEntryName covers every Add code path.
 func TestFilterStartupList_NameMatchesAcrossOSes(t *testing.T) {
-	got := filterStartupList(fixtureEntries(), "", "watch")
+	got := filterStartupList(fixtureStartupEntries(), "", "watch")
 	if len(got) != 4 {
 		t.Fatalf("len = %d, want 4; got %#v", len(got), got)
 	}
@@ -88,7 +88,7 @@ func TestFilterStartupList_NameMatchesAcrossOSes(t *testing.T) {
 // matching the user-facing contract `--backend=registry --name=watch`
 // returns ONLY the registry entry for that name.
 func TestFilterStartupList_BackendAndName(t *testing.T) {
-	got := filterStartupList(fixtureEntries(), "registry", "watch")
+	got := filterStartupList(fixtureStartupEntries(), "registry", "watch")
 	if len(got) != 1 {
 		t.Fatalf("len = %d, want 1; got %#v", len(got), got)
 	}
@@ -101,7 +101,7 @@ func TestFilterStartupList_BackendAndName(t *testing.T) {
 // slice when nothing matches — important for renderers that
 // distinguish "filtered to zero" from "List failed".
 func TestFilterStartupList_NameNoMatch(t *testing.T) {
-	got := filterStartupList(fixtureEntries(), "", "does-not-exist")
+	got := filterStartupList(fixtureStartupEntries(), "", "does-not-exist")
 	if got == nil {
 		t.Fatal("got nil slice; want empty non-nil")
 	}
