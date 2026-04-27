@@ -6,6 +6,7 @@ package cmd
 // so these tests run on every CI runner.
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/startup"
