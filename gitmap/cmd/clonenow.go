@@ -35,6 +35,10 @@ type cloneNowFlags struct {
 	format   string
 	cwd      string
 	onExists string
+	// output: "" (legacy) or "terminal" (standardized RepoTermBlock
+	// streamed before each row's clone). Mirrors clone-from /
+	// clone-next so all clone commands share one flag shape.
+	output string
 }
 
 // runCloneNow is the dispatcher entry. checkHelp handles `--help`
@@ -75,6 +79,8 @@ func parseCloneNowFlags(args []string) cloneNowFlags {
 		constants.FlagDescCloneNowCwd)
 	fs.StringVar(&cfg.onExists, constants.FlagCloneNowOnExists,
 		constants.CloneNowOnExistsSkip, constants.FlagDescCloneNowOnExists)
+	fs.StringVar(&cfg.output, constants.FlagCloneTermOutput, "",
+		constants.FlagDescCloneTermOutput)
 	reordered := reorderFlagsBeforeArgs(args)
 	fs.Parse(reordered)
 	if fs.NArg() < 1 {
