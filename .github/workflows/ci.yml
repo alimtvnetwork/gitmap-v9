@@ -525,6 +525,98 @@ jobs:
             echo "::warning::Only stdlib vulnerabilities found (no fix available in current Go version)"
           fi
 
+  json-snapshot-fast:
+    # Fail-fast guard for the JSON snapshot/contract surface
+    # (startup-list, find-next, latest-branch + the schema registry).
+    # Runs in parallel with `lint` — only `sha-check` is a needs — so a
+    # schema or key-ordering regression surfaces in seconds, not after
+    # the full unit shard finishes. Downstream consumers (CI diff jobs,
+    # content-addressed caches, jq pipelines) depend on these contracts
+    # being byte-stable, so a failure here is the loudest possible
+    # signal that an `--format=json` consumer is about to break.
+    #
+    # Why this is NOT redundant with the matrix `test` job below:
+    #   - `test (unit)` runs every cmd/ test (~hundreds), takes minutes,
+    #     and any failure is buried in a long log.
+    #   - This job runs ONLY the ~20 JSON snapshot/contract/registry/
+    #     determinism tests with -failfast, finishes in seconds, and
+    #     surfaces the exact assertion that broke.
+    #
+    # The -run regex is anchored on the test-name prefixes used by
+    # every JSON contract suite in cmd/:
+    #   TestStartupListJSON{Snapshot,Contract,Bytes}_*
+    #   TestStartupListJSON{L,_Determinism,Indent}_*
+    #   TestFindNextJSONContract_*
+    #   TestLatestBranchJSONContract_*
+    #   TestSchemaRegistry_*
+    #   TestAssertGoldenBytesDeterministic_*
+    #   TestExpectDelim_* / TestScanEveryObjectKeysPure_*
+    name: JSON Snapshot Fast Check
+    runs-on: ubuntu-latest
+    needs: sha-check
+    steps:
+      - name: Already validated
+        if: needs.sha-check.outputs.already-built == 'true'
+        run: echo "SHA ${{ github.sha }} already passed JSON snapshot fast check"
+
+      - uses: actions/checkout@v6
+        if: needs.sha-check.outputs.already-built != 'true'
+
+      - uses: actions/setup-go@v6
+        if: needs.sha-check.outputs.already-built != 'true'
+        with:
+          go-version-file: gitmap/go.mod
+          cache-dependency-path: gitmap/go.sum
+
+      - name: Run JSON snapshot + schema contract tests (-failfast)
+        if: needs.sha-check.outputs.already-built != 'true'
+        working-directory: gitmap
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          # -failfast: abort on the first failing test so the log
+          # tail is the actual regression, not 30 cascading goldens.
+          # -count=1: bypass the test cache so a CI rerun on the
+          # same SHA still re-validates after a fixture edit.
+          # -run: anchored regex — see the job-level comment for the
+          # exhaustive list of test prefixes covered.
+          go test ./cmd/... ./formatter/... \
+            -failfast \
+            -count=1 \
+            -run '^(TestStartupListJSON|TestFindNextJSONContract|TestLatestBranchJSONContract|TestSchemaRegistry|TestAssertGoldenBytesDeterministic|TestExpectDelim|TestScanEveryObjectKeysPure|TestWriteJSON|TestWriteCSV)' \
+            2>&1 | tee /tmp/json-snapshot.log
+          exit_code=${PIPESTATUS[0]}
+          set -e
+          if [ "$exit_code" -ne 0 ]; then
+            echo ""
+            echo "========================================="
+            echo "  JSON SNAPSHOT / SCHEMA REGRESSION"
+            echo "========================================="
+            echo "A startup-list / find-next / latest-branch JSON"
+            echo "contract test failed. Likely causes:"
+            echo "  1. Encoder shape changed (added/renamed/reordered field)"
+            echo "  2. Key ordering drifted (map iteration leaked in)"
+            echo "  3. Schema registry vN.json out of date"
+            echo ""
+            echo "To accept an intentional schema change:"
+            echo "  GITMAP_UPDATE_SCHEMA=<name> go test ./cmd/..."
+            echo "To regenerate golden fixtures:"
+            echo "  GITMAP_UPDATE_GOLDEN=1 go test ./cmd/..."
+            echo "========================================="
+            grep -E -A 5 '^--- FAIL:' /tmp/json-snapshot.log || true
+            echo "========================================="
+          fi
+          exit "$exit_code"
+
+      - name: Upload snapshot test log
+        if: always() && needs.sha-check.outputs.already-built != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: json-snapshot-log
+          path: /tmp/json-snapshot.log
+          retention-days: 7
+
   test:
     name: Test (${{ matrix.name }})
     runs-on: ubuntu-latest
