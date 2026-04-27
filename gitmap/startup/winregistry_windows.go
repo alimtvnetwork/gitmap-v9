@@ -3,23 +3,31 @@
 package startup
 
 // Registry backend for `gitmap startup-add` / `startup-remove` /
-// `startup-list` on Windows. Writes to:
+// `startup-list` on Windows. Writes ONE direct value per entry to:
 //
 //   HKCU\Software\Microsoft\Windows\CurrentVersion\Run
-//     gitmap-<name>                = "<exec>"
-//     gitmap-<name>.gitmap-managed = "true"   (sibling marker)
+//     gitmap-<name> = "<exec>"
+//
+// Ownership is tracked OUT-OF-BAND under a separate scope:
 //
 //   HKCU\Software\Gitmap\StartupRegistry\<name>
 //     Exec      = "<exec>"
 //     CreatedAt = "<RFC3339-UTC>"
 //     Source    = "registry"
 //
-// Both records (Run-key sibling marker AND tracking subkey) must
-// agree the entry is gitmap-managed before Remove will delete the
-// Run value. Belt-and-suspenders: a user manually removing the
-// HKCU\Software\Gitmap subtree leaves the Run-key value behind, but
-// Add can still re-claim it because the sibling marker proves
-// previous gitmap ownership.
+// Why no sibling marker in the Run key: Windows treats EVERY value
+// under Run as an autostart command and feeds it to the shell at
+// login. A `gitmap-<name>.gitmap-managed = "true"` sibling value
+// shows up in Task Manager's Startup tab and is dispatched as a
+// command (the literal string "true" — silently fails, but
+// pollutes the user's startup surface). Keeping the ownership
+// marker in a SEPARATE scope (HKCU\Software\Gitmap) means the Run
+// key contains only real autostart commands, exactly like a
+// hand-edited entry would. The trade-off: a user who manually
+// deletes HKCU\Software\Gitmap loses the ability to refuse-overwrite
+// a same-named third-party Run value — Add will treat any non-
+// tracked Run value as third-party (refuse) regardless of who
+// originally wrote it. This is the safer default.
 //
 // Build tag: only compiled on windows. The non-windows stub in
 // winregistry_other.go provides the same symbols so cross-platform
@@ -37,13 +45,13 @@ import (
 // addWindowsRegistry implements the Registry backend's Add path.
 // The two writes (Run value + tracking subkey) are NOT atomic at
 // the Windows API level — there is no transactional registry write
-// across keys. We tolerate this because the sibling marker value
-// is written FIRST under the same key as the Run value, so a crash
-// between the two writes leaves an entry that future Add/Remove
-// still recognize as ours.
+// across keys. We tolerate this: the tracking subkey is written
+// FIRST, so a crash between the two writes leaves an "owned but
+// inactive" record that future Add re-runs can safely overwrite
+// (because classifyRunValue will see managed=true).
 func addWindowsRegistry(clean string, opts AddOptions) (AddResult, error) {
 	valueName := constants.StartupWinValuePrefix + clean
-	exists, managed, err := classifyRunValue(valueName)
+	exists, managed, err := classifyRunValue(valueName, clean)
 	if err != nil {
 
 		return AddResult{}, err
@@ -56,12 +64,12 @@ func addWindowsRegistry(clean string, opts AddOptions) (AddResult, error) {
 
 		return AddResult{Status: AddExists, Path: runValuePath(valueName)}, nil
 	}
-	if err := writeRunValueAndMarker(valueName, opts.Exec); err != nil {
+	if err := writeTrackingSubkey(constants.RegGitmapRegistrySub, clean,
+		opts.Exec, constants.StartupBackendRegistry); err != nil {
 
 		return AddResult{}, err
 	}
-	if err := writeTrackingSubkey(constants.RegGitmapRegistrySub, clean,
-		opts.Exec, constants.StartupBackendRegistry); err != nil {
+	if err := writeRunValue(valueName, opts.Exec); err != nil {
 
 		return AddResult{}, err
 	}
@@ -74,11 +82,11 @@ func addWindowsRegistry(clean string, opts AddOptions) (AddResult, error) {
 }
 
 // classifyRunValue returns (exists, managed, error) for a Run-key
-// value. "Managed" means BOTH the sibling .gitmap-managed value
-// equals "true" AND the tracking subkey under HKCU\Software\Gitmap
-// exists. Either alone is treated as "not ours" so a stray sibling
-// marker on a third-party value cannot trick Remove into deleting it.
-func classifyRunValue(valueName string) (bool, bool, error) {
+// value. "Managed" means the tracking subkey under HKCU\Software\
+// Gitmap\StartupRegistry\<clean> exists. The Run key itself carries
+// NO marker — keeping the autostart surface clean is the whole
+// point of the direct-value model.
+func classifyRunValue(valueName, clean string) (bool, bool, error) {
 	k, err := registry.OpenKey(registry.CURRENT_USER, constants.RegRunKeyPath, registry.QUERY_VALUE)
 	if err != nil {
 		if err == registry.ErrNotExist {
@@ -98,13 +106,7 @@ func classifyRunValue(valueName string) (bool, bool, error) {
 
 		return false, false, fmt.Errorf(constants.ErrStartupRegistryRead, valueName, err)
 	}
-	marker, _, err := k.GetStringValue(valueName + constants.RegMarkerSiblingSuffix)
-	if err != nil || marker != "true" {
-
-		return true, false, nil
-	}
-	tracking := strings.TrimPrefix(valueName, constants.StartupWinValuePrefix)
-	hasTracking := trackingSubkeyExists(constants.RegGitmapRegistrySub, tracking)
+	hasTracking := trackingSubkeyExists(constants.RegGitmapRegistrySub, clean)
 
 	return true, hasTracking, nil
 }
@@ -125,11 +127,10 @@ func trackingSubkeyExists(parent, name string) bool {
 	return true
 }
 
-// writeRunValueAndMarker writes the command and the sibling marker
-// in a single OpenKey scope. Marker is written FIRST so a crash
-// after the marker but before the command leaves a "claim" record
-// future Add can recognize and overwrite (rather than refusing).
-func writeRunValueAndMarker(valueName, exec string) error {
+// writeRunValue writes the autostart command to the Run key. ONE
+// value per entry — no sibling marker. Ownership tracking lives
+// entirely under HKCU\Software\Gitmap\StartupRegistry.
+func writeRunValue(valueName, exec string) error {
 	k, _, err := registry.CreateKey(registry.CURRENT_USER,
 		constants.RegRunKeyPath, registry.SET_VALUE)
 	if err != nil {
@@ -138,11 +139,6 @@ func writeRunValueAndMarker(valueName, exec string) error {
 	}
 	defer k.Close()
 
-	markerName := valueName + constants.RegMarkerSiblingSuffix
-	if err := k.SetStringValue(markerName, "true"); err != nil {
-
-		return fmt.Errorf(constants.ErrStartupRegistryWrite, markerName, err)
-	}
 	if err := k.SetStringValue(valueName, exec); err != nil {
 
 		return fmt.Errorf(constants.ErrStartupRegistryWrite, valueName, err)
@@ -189,3 +185,8 @@ func writeTrackingSubkey(parent, name, exec, source string) error {
 func runValuePath(valueName string) string {
 	return `HKCU\` + constants.RegRunKeyPath + `\` + valueName
 }
+
+// _ avoids unused-import errors for `strings` if a future refactor
+// drops the only consumer; kept here so the import block stays
+// stable for the next editor.
+var _ = strings.HasPrefix
