@@ -18,7 +18,7 @@ into a single command, so contributors cannot accidentally:
 ## Synopsis
 
 ```
-gitmap regoldens --pattern <TestPattern> [--package <pkg>] [--skip-verify] [--dry-run]
+gitmap regoldens --pattern <TestPattern> [--package <pkg>] [--skip-verify] [--dry-run] [--diff]
 gitmap rg --pattern <TestPattern>                               # short alias
 ```
 
@@ -30,6 +30,7 @@ gitmap rg --pattern <TestPattern>                               # short alias
 | `--package` | `./...`    | Go package selector. Scope tightly to avoid touching unrelated fixtures. |
 | `--skip-verify` | false  | Skip the determinism verification pass. **Not recommended** — the verify pass is the whole point. |
 | `--dry-run` | false       | Print the `go test` invocations that would run, then exit 0. |
+| `--diff` | false          | After pass 1, print a concise per-file summary of which `testdata/` goldens changed (status + line counts) before pass 2 runs. |
 
 ## Behavior
 
