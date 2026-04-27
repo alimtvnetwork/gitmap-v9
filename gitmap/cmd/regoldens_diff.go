@@ -35,10 +35,11 @@ type goldenDiffEntry struct {
 // because regenerate passes should only touch those paths.
 const goldenDiffPathFragment = "testdata/"
 
-// emitGoldenDiffSummary prints the post-pass-1 diff summary. Errors
-// from git invocations are surfaced (zero-swallow policy) but never
-// fatal — the diff is informational and must not block pass 2.
-func emitGoldenDiffSummary() {
+// emitGoldenDiffSummary prints the post-pass-1 diff summary in the
+// requested mode ("short" | "full"). Errors from git invocations are
+// surfaced (zero-swallow policy) but never fatal — the diff is
+// informational and must not block pass 2.
+func emitGoldenDiffSummary(mode string) {
 	if !isGitWorkingTree() {
 		fmt.Fprint(os.Stderr, constants.MsgRegoldensDiffSkipped)
 		return
@@ -48,12 +49,12 @@ func emitGoldenDiffSummary() {
 		fmt.Fprintf(os.Stderr, "regoldens: diff summary failed: %v\n", err)
 		return
 	}
-	fmt.Fprint(os.Stdout, constants.MsgRegoldensDiffHeader)
+	fmt.Fprintf(os.Stdout, constants.MsgRegoldensDiffHeader, mode)
 	if len(entries) == 0 {
 		fmt.Fprint(os.Stdout, constants.MsgRegoldensDiffNoChanges)
 		return
 	}
-	printGoldenDiffEntries(entries)
+	printGoldenDiffEntries(entries, mode)
 }
 
 // isGitWorkingTree returns true when the current directory is inside
