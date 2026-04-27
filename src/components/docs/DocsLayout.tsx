@@ -91,7 +91,7 @@ const DocsLayout = ({ children }: DocsLayoutProps) => {
               <CommandPalette />
             </div>
           </header>
-          <main className="flex-1 overflow-auto bg-background">
+          <main className="docs-scroll flex-1 overflow-auto bg-background">
             <div className="mx-auto max-w-5xl px-6 py-8">
               {children}
             </div>
