@@ -35,7 +35,7 @@ have to open every unrelated file in the directory.
 |------|---------|-------------|
 | `--format` | `table` | Output format: `table`, `json`, `jsonl`, or `csv` |
 | `--json-indent` | `2` | Spaces per indent level for `--format=json`. `0` = minified single line. Range: 0..8. Ignored for non-json formats. |
-| `--backend` | _(all)_ | Filter by backend: `registry` or `startup-folder`. Empty = both. Linux/macOS entries match neither, so passing `--backend` on those OSes returns zero rows. |
+| `--backend` | _(all)_ | Filter by backend: `registry` (HKCU per-user), `registry-hklm` (HKLM machine-wide), or `startup-folder`. Empty = all backends. Linux/macOS entries match none of them, so passing `--backend` on those OSes returns zero rows. |
 | `--name` | _(all)_ | Filter by logical entry name (the same value passed to `startup-add --name`). Exact match against the stripped name (no `gitmap-` prefix, no `.desktop` / `.plist` / `.lnk` suffix). |
 
 `table` (alias: `terminal`) is the legacy human-readable rendering.

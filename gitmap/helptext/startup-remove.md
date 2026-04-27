@@ -25,7 +25,7 @@ extension is tolerated for convenience:
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--dry-run` | `false` | Show what would be deleted (or refused/no-op) without touching the filesystem |
-| `--backend` | (try both) | Windows only: `registry` or `startup-folder`. Scopes the removal to one backend; without it, gitmap probes the registry first then the Startup folder and removes the first match |
+| `--backend` | (try all) | Windows only: `registry` (HKCU per-user), `registry-hklm` (HKLM machine-wide; **writes require admin**, dry-run does not), or `startup-folder`. Scopes the removal to one backend; without it, gitmap probes HKCU registry, then HKLM registry, then the Startup folder, and removes the first match |
 | `--output` | `terminal` | Output mode: `terminal` (legacy human lines) or `json` (status object — see below) |
 | `--json-indent` | `2` | Spaces per indent level for `--output=json` (`0` = minified single line). Range: 0..8. Ignored for `--output=terminal` |
 

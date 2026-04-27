@@ -168,12 +168,13 @@ const (
 	// startup-add --name) so a user can verify a specific entry
 	// without grepping table output.
 	FlagStartupListBackend     = "backend"
-	FlagDescStartupListBackend = "Filter by backend: registry or startup-folder " +
-		"(default: all backends)"
+	FlagDescStartupListBackend = "Filter by backend: registry, registry-hklm, " +
+		"or startup-folder (default: all backends)"
 	FlagStartupListName     = "name"
 	FlagDescStartupListName = "Filter by logical entry name (same form as " +
 		"`startup-add --name`); exact match"
-	ErrStartupListBadBackend = "startup-list: unknown --backend %q (expected: registry, startup-folder)"
+	ErrStartupListBadBackend = "startup-list: unknown --backend %q " +
+		"(expected: registry, registry-hklm, startup-folder)"
 )
 
 // startup-list --json-indent flag. Controls whitespace in
@@ -203,6 +204,7 @@ const (
 	FlagStartupRemoveDryRun      = "dry-run"
 	FlagDescStartupRemoveDryRun  = "Show what would be deleted (or refused/no-op) without touching the filesystem"
 	FlagStartupRemoveBackend     = "backend"
-	FlagDescStartupRemoveBackend = "Windows backend to remove from: registry or startup-folder " +
-		"(default: try both — registry first, then startup-folder)"
+	FlagDescStartupRemoveBackend = "Windows backend to remove from: registry, " +
+		"registry-hklm (requires admin), or startup-folder " +
+		"(default: try all — registry, then registry-hklm, then startup-folder)"
 )

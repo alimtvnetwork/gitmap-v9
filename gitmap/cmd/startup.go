@@ -124,6 +124,7 @@ func validateStartupListBackend(b string) error {
 	switch b {
 	case "",
 		constants.StartupBackendRegistry,
+		constants.StartupBackendRegistryHKLM,
 		constants.StartupBackendStartupFolder:
 
 		return nil

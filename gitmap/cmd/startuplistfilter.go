@@ -48,12 +48,14 @@ func filterStartupList(entries []startup.Entry, backend, name string) []startup.
 // matchesBackend returns true when the entry came from the
 // requested backend. The discriminator is the Path shape:
 //
-//   - Registry-backend entries set Path to `HKCU\...\<value>` (see
-//     runValuePath in startup/winregistry_windows.go).
+//   - HKCU registry-backend entries set Path to `HKCU\...\<value>`
+//     (see runValuePathFor in startup/winregistry_windows.go).
+//   - HKLM registry-backend entries set Path to `HKLM\...\<value>`
+//     (machine-wide, opt-in via --backend=registry-hklm).
 //   - Startup-folder entries set Path to a real filesystem path
 //     ending in .lnk.
-//   - Linux/macOS entries don't belong to either Windows backend,
-//     so a --backend filter on those OSes always matches zero
+//   - Linux/macOS entries don't belong to any Windows backend, so
+//     a --backend filter on those OSes always matches zero
 //     entries — exactly the behavior a user scripting cross-OS
 //     would expect (no false positives).
 //
@@ -65,6 +67,8 @@ func matchesBackend(e startup.Entry, backend string) bool {
 	switch backend {
 	case constants.StartupBackendRegistry:
 		return strings.HasPrefix(e.Path, `HKCU\`)
+	case constants.StartupBackendRegistryHKLM:
+		return strings.HasPrefix(e.Path, `HKLM\`)
 	case constants.StartupBackendStartupFolder:
 		return strings.HasSuffix(strings.ToLower(e.Path), constants.StartupLnkExt)
 	}

@@ -6,6 +6,7 @@ package cmd
 // so these tests run on every CI runner.
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/startup"
@@ -24,6 +25,9 @@ func fixtureStartupEntries() []startup.Entry {
 			Exec: "/usr/local/bin/gitmap watch"},
 		{Name: "gitmap-watch",
 			Path: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\gitmap-watch`,
+			Exec: `C:\gitmap.exe watch`},
+		{Name: "gitmap-watch",
+			Path: `HKLM\Software\Microsoft\Windows\CurrentVersion\Run\gitmap-watch`,
 			Exec: `C:\gitmap.exe watch`},
 		{Name: "gitmap-watch.lnk",
 			Path: `C:\Users\me\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\gitmap-watch.lnk`,
@@ -79,8 +83,21 @@ func TestFilterStartupList_BackendStartupFolder(t *testing.T) {
 // logicalEntryName covers every Add code path.
 func TestFilterStartupList_NameMatchesAcrossOSes(t *testing.T) {
 	got := filterStartupList(fixtureStartupEntries(), "", "watch")
-	if len(got) != 4 {
-		t.Fatalf("len = %d, want 4; got %#v", len(got), got)
+	if len(got) != 5 {
+		t.Fatalf("len = %d, want 5; got %#v", len(got), got)
+	}
+}
+
+// TestFilterStartupList_BackendRegistryHKLM keeps only the entry
+// whose Path starts with `HKLM\` — the discriminator runValuePathFor
+// emits for the machine-wide registry-hklm backend.
+func TestFilterStartupList_BackendRegistryHKLM(t *testing.T) {
+	got := filterStartupList(fixtureStartupEntries(), "registry-hklm", "")
+	if len(got) != 1 {
+		t.Fatalf("len = %d, want 1; got %#v", len(got), got)
+	}
+	if !strings.HasPrefix(got[0].Path, `HKLM\`) {
+		t.Errorf("path = %q, want HKLM-rooted", got[0].Path)
 	}
 }
 
@@ -122,6 +139,7 @@ func TestParseStartupListFlags_BackendValidation(t *testing.T) {
 	}{
 		{"empty", []string{}, false},
 		{"registry", []string{"--backend=registry"}, false},
+		{"registry-hklm", []string{"--backend=registry-hklm"}, false},
 		{"startup-folder", []string{"--backend=startup-folder"}, false},
 		{"unknown", []string{"--backend=hkcu"}, true},
 	}
