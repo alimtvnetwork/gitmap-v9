@@ -32,6 +32,7 @@ func runClonePick(args []string) {
 
 	parsed := parseClonePickFlags(args)
 	setCmdFaithfulVerify(parsed.VerifyCmdFaithful)
+	setCmdFaithfulExitOnMismatch(parsed.VerifyCmdFaithfulExitOnMismatch)
 	setCmdPrintArgv(parsed.PrintCloneArgv)
 	plan, err := clonepick.ParseArgs(parsed.RawURL, parsed.RawPaths, parsed.Flags)
 	if err != nil {
@@ -45,6 +46,7 @@ func runClonePick(args []string) {
 		// summary shape consistent across every clone command.
 		if parsed.Output == constants.OutputTerminal {
 			printClonePickTermBlock(plan)
+			maybeExitOnCmdFaithfulMismatch()
 
 			return
 		}
@@ -52,6 +54,7 @@ func runClonePick(args []string) {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+		maybeExitOnCmdFaithfulMismatch()
 
 		return
 	}
@@ -67,12 +70,13 @@ func runClonePick(args []string) {
 // site signature each time. Fields are exported because the struct
 // itself stays unexported (cmd-package-internal).
 type clonePickParsed struct {
-	RawURL            string
-	RawPaths          string
-	Flags             clonepick.Flags
-	Output            string
-	VerifyCmdFaithful bool
-	PrintCloneArgv    bool
+	RawURL                          string
+	RawPaths                        string
+	Flags                           clonepick.Flags
+	Output                          string
+	VerifyCmdFaithful               bool
+	VerifyCmdFaithfulExitOnMismatch bool
+	PrintCloneArgv                  bool
 }
 
 // parseClonePickFlags binds every clone-pick flag and extracts the
@@ -109,6 +113,8 @@ func parseClonePickFlags(args []string) clonePickParsed {
 		constants.FlagDescCloneTermOutput)
 	verify := fs.Bool(constants.FlagCloneVerifyCmdFaithful, false,
 		constants.FlagDescCloneVerifyCmdFaithful)
+	verifyExit := fs.Bool(constants.FlagCloneVerifyCmdFaithfulExitOnMismatch,
+		false, constants.FlagDescCloneVerifyCmdFaithfulExitOnMismatch)
 	printArgv := fs.Bool(constants.FlagClonePrintArgv, false,
 		constants.FlagDescClonePrintArgv)
 
@@ -125,12 +131,13 @@ func parseClonePickFlags(args []string) clonePickParsed {
 	}
 
 	return clonePickParsed{
-		RawURL:            fs.Arg(0),
-		RawPaths:          rawPaths,
-		Flags:             flags,
-		Output:            *output,
-		VerifyCmdFaithful: *verify,
-		PrintCloneArgv:    *printArgv,
+		RawURL:                          fs.Arg(0),
+		RawPaths:                        rawPaths,
+		Flags:                           flags,
+		Output:                          *output,
+		VerifyCmdFaithful:               *verify,
+		VerifyCmdFaithfulExitOnMismatch: *verifyExit,
+		PrintCloneArgv:                  *printArgv,
 	}
 }
 
