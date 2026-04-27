@@ -21,11 +21,13 @@ import (
 // goldenDiffEntry captures one changed testdata/ file. Status uses
 // the porcelain letter set: A (added/untracked), M (modified),
 // D (deleted), R (renamed), ? (untracked — normalized to A).
+// renamedFrom is populated only for R entries (full mode).
 type goldenDiffEntry struct {
-	status   string
-	path     string
-	added    int
-	deleted  int
+	status      string
+	path        string
+	renamedFrom string
+	added       int
+	deleted     int
 }
 
 // goldenDiffPathFragment scopes both `git status` and `git diff`
