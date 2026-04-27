@@ -112,6 +112,91 @@ are not elevated the command exits with a friendly:
 --backend=registry-hklm --dry-run` are read-only and work for any
 user (no elevation needed).
 
+### Ownership detection (Windows)
+
+Every Windows backend uses a **two-gate** check to decide whether
+an existing entry belongs to gitmap. Both gates must pass for the
+entry to be considered "managed by gitmap"; otherwise it is
+treated as **third-party** and refused (even with `--force`).
+
+| Backend | Gate 1 (autostart surface) | Gate 2 (ownership marker) |
+|---------|----------------------------|---------------------------|
+| `registry`       | Run-key value `HKCU\…\Run\gitmap-<name>` exists | Tracking subkey `HKCU\Software\Gitmap\StartupRegistry\<name>` exists |
+| `registry-hklm`  | Run-key value `HKLM\…\Run\gitmap-<name>` exists | Tracking subkey `HKLM\Software\Gitmap\StartupRegistry\<name>` exists |
+| `startup-folder` | `gitmap-<name>.lnk` file exists in the user's Startup folder | Tracking subkey `HKCU\Software\Gitmap\StartupFolder\<name>` exists |
+
+The Run-key value itself **never** carries an inline marker.
+Windows treats every value under `…\Run` as an autostart command
+and feeds it to the shell at login, so a sibling
+`gitmap-<name>.gitmap-managed = "true"` value would surface in
+Task Manager's Startup tab and be dispatched as the literal
+command `true`. Keeping the marker in a separate scope under
+`<hive>\Software\Gitmap` lets the Run key contain only real
+autostart commands — exactly what a hand-edited entry would look
+like.
+
+The classifier returns one of three states for each candidate:
+
+| State        | Gate 1 | Gate 2 | `startup-add` outcome |
+|--------------|:-:|:-:|----------------------|
+| **none**     | ✗  | ✗  | `created` (fresh write) |
+| **gitmap**   | ✓  | ✓  | `exists` (no `--force`) / `overwritten` (with `--force`) |
+| **third-party** | ✓ | ✗ | `refused` — never touched, even with `--force` |
+
+A read error opening either key is treated as "third-party"
+(refused) so an unreadable entry is never silently overwritten.
+
+### `--force` overwrite behavior (Windows)
+
+`--force` lifts **only one** check: the "already exists AND is
+ours" guard. It does **not** weaken the ownership gate. Concretely:
+
+- **gitmap-managed entry, no `--force`** → `exists` no-op, exit 0.
+- **gitmap-managed entry, `--force`** → tracking subkey rewritten
+  (with a fresh `CreatedAt`) and the Run-key value / `.lnk`
+  replaced. Reported as `overwritten`.
+- **Third-party entry, no `--force`** → `refused`, nothing
+  written. Exit 0 so a provisioning script can keep going.
+- **Third-party entry, `--force`** → still **`refused`**.
+  `--force` cannot promote a non-tracked entry to managed status.
+
+If a previous interactive user manually deleted
+`<hive>\Software\Gitmap`, every existing Run-key value gitmap
+created looks third-party from then on — Add will refuse to
+overwrite them and `startup-list` will not show them. Re-create
+the tracking subkeys (or just `startup-add … --force` on a
+different `--name`) to recover; gitmap deliberately never
+auto-claims a Run-key value it cannot prove ownership of.
+
+### Idempotency via the tracking subkey
+
+Because ownership lives in the tracking subkey, re-running the
+same `startup-add` invocation is **always safe**:
+
+```
+gitmap startup-add --name watch --exec "C:\gitmap.exe watch"
+# → created
+gitmap startup-add --name watch --exec "C:\gitmap.exe watch"
+# → exists  (no-op, exit 0 — safe to put in a provisioning script)
+gitmap startup-add --name watch --exec "C:\gitmap.exe watch --quiet" --force
+# → overwritten  (Run-key value updated, tracking subkey rewritten)
+```
+
+Crash safety: the tracking subkey is written **before** the
+Run-key value / `.lnk`. If the process is killed between the two
+writes, the next `startup-add` re-run sees a managed-but-inactive
+record and safely overwrites it (gate 2 passes, gate 1 fails →
+treated as `created` for Run-key purposes, the existing tracking
+subkey's metadata gets refreshed). At no point can a partial
+write leave a third-party-looking value behind.
+
+`startup-remove` follows the same idempotent contract: a missing
+entry is `noop` (exit 0), a third-party entry is `refused`, and
+deleting a managed entry removes both the Run-key value and the
+tracking subkey. A crash between those two deletes leaves an
+orphaned tracking subkey that the next `startup-remove` will
+clean up.
+
 ## Prerequisites
 
 - Linux or other Unix with `~/.config/autostart` (XDG-compliant).
@@ -123,10 +208,17 @@ user (no elevation needed).
 
 - Refuses to overwrite a `.desktop` file that does NOT carry the
   `X-Gitmap-Managed=true` marker, even with `--force`.
+- On Windows, refuses to overwrite a Run-key value or `.lnk`
+  whose tracking subkey under `<hive>\Software\Gitmap` is
+  missing, even with `--force` — see *Ownership detection
+  (Windows)* above.
 - Names containing path separators (`/`, `\`) or NUL are rejected
   before any I/O.
 - Atomic write (temp file + rename) so a crash mid-write cannot
   leave a half-written file the next login session would execute.
+  On Windows the tracking subkey is written before the Run-key
+  value / `.lnk` so a crash leaves the entry recoverable on the
+  next `startup-add`.
 
 ## Examples
 
