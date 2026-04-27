@@ -228,4 +228,30 @@ describe("DocsTooltip — non-element children fallback", () => {
     expect(screen.getByLabelText("inner btn")).toBeTruthy();
     expect(screen.getByText("extra")).toBeTruthy();
   });
+
+  it("opens the tooltip when the normalized wrapper is reached via keyboard Tab", async () => {
+    // When the child is a non-element (string), DocsTooltip wraps it
+    // in a tabIndex=0 span so it remains keyboard-reachable AND
+    // Radix can wire its trigger handlers (data-state="closed"
+    // appears on the wrapper). This test simulates a real keyboard
+    // user pressing Tab to land on the wrapper and asserts the
+    // tooltip body becomes visible — the core a11y promise of the
+    // fallback path.
+    const user = userEvent.setup();
+    renderTooltip("just text");
+    const wrapper = screen.getByText("just text");
+    expect(wrapper.tagName).toBe("SPAN");
+    expect(wrapper.getAttribute("tabindex")).toBe("0");
+    expect(wrapper.getAttribute("aria-label")).toBe("fallback label");
+
+    // Tab from document.body lands on the only focusable node.
+    await user.tab();
+    expect(document.activeElement).toBe(wrapper);
+
+    const tips = await screen.findAllByRole("tooltip");
+    const matched = tips.some((t) =>
+      (t.textContent ?? "").includes("fallback label"),
+    );
+    expect(matched).toBe(true);
+  });
 });
