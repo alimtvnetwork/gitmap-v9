@@ -40,6 +40,8 @@ type cloneFromFlags struct {
 	output string
 	// verifyCmdFaithful enables the dry-run argv-vs-displayed checker.
 	verifyCmdFaithful bool
+	// printCloneArgv dumps the executor argv to stderr.
+	printCloneArgv bool
 }
 
 // runCloneFrom is the dispatcher entry. checkHelp handles `--help`
@@ -49,6 +51,7 @@ func runCloneFrom(args []string) {
 	checkHelp("clone-from", args)
 	cfg := parseCloneFromFlags(args)
 	setCmdFaithfulVerify(cfg.verifyCmdFaithful)
+	setCmdPrintArgv(cfg.printCloneArgv)
 	plan, err := clonefrom.ParseFile(cfg.file)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -79,6 +82,8 @@ func parseCloneFromFlags(args []string) cloneFromFlags {
 		constants.FlagDescCloneFromOutput)
 	fs.BoolVar(&cfg.verifyCmdFaithful, constants.FlagCloneVerifyCmdFaithful,
 		false, constants.FlagDescCloneVerifyCmdFaithful)
+	fs.BoolVar(&cfg.printCloneArgv, constants.FlagClonePrintArgv,
+		false, constants.FlagDescClonePrintArgv)
 	reordered := reorderFlagsBeforeArgs(args)
 	fs.Parse(reordered)
 	if fs.NArg() < 1 {
