@@ -57,7 +57,7 @@ const DocsLayout = ({ children }: DocsLayoutProps) => {
                     aria-label="Dark theme"
                     onClick={() => setTheme("dark")}
                     className={[
-                      "inline-flex h-6 w-6 items-center justify-center rounded-[3px] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card",
+                      "docs-focus-ring inline-flex h-6 w-6 items-center justify-center rounded-[3px] transition-colors duration-200",
                       dark
                         ? "bg-secondary text-foreground"
                         : "text-muted-foreground hover:text-foreground",
