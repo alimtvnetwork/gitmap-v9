@@ -20,13 +20,22 @@ import (
 //     present in the raw JSON — catches "I forgot defaultMode"
 //     bugs that a typed unmarshal would silently mask with
 //     struct defaults.
-//  2. The bytes are unmarshaled onto a defaulted Config (so any
+//  2. ValidateRawShape checks each required key holds the right
+//     JSON type (string vs number vs object) — catches
+//     `"defaultMode": 42` with a per-key error message instead
+//     of letting json.Unmarshal emit its generic "cannot
+//     unmarshal number into Go struct field" message.
+//  3. The bytes are unmarshaled onto a defaulted Config (so any
 //     new optional fields added later don't break old configs).
-//  3. ValidateConfig checks the resulting struct for invalid enum
+//  4. ValidateConfig checks the resulting struct for invalid enum
 //     values — catches typos like `"defaultMode": "htps"` and
 //     explicit empty strings.
+//  5. ValidateConfigStruct checks the populated struct for the
+//     remaining shape rules: non-empty outputDir, non-negative
+//     dashboardRefresh, no-empty entries in excludeDirs, and
+//     complete (goos+goarch) release targets.
 //
-// Either validation step returning an error causes LoadFromFile to
+// Any validation step returning an error causes LoadFromFile to
 // return that error so the CLI fails fast at startup instead of
 // limping along with a partially-broken config.
 func LoadFromFile(path string) (model.Config, error) {
