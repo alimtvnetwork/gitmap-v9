@@ -129,6 +129,22 @@ report: /home/me/.gitmap/clone-from-report-1735000000.csv
   failed   https://github.com/e/f.git    fatal: repository not found
 ```
 
+Execute with `--output terminal` (stdout shown; stderr carries git progress + the summary):
+```
+$ gitmap clone-from repos.csv --execute --output terminal
+  [1] b
+      branch: main (manifest)
+      from:   https://github.com/a/b.git
+      to:     https://github.com/a/b.git
+      cmd:    git clone -b main https://github.com/a/b.git b
+  [2] d
+      branch: main (remote HEAD)
+      from:   https://github.com/c/d.git
+      to:     https://github.com/c/d.git
+      cmd:    git clone https://github.com/c/d.git d
+  ...
+```
+
 ## See also
 
 - `gitmap clone <url>` — clone a single URL with shell handoff.
