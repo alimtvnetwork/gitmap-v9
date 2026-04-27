@@ -46,6 +46,11 @@ type CloneNextFlags struct {
 	// clone, no folder removal, no DB write, no GH Desktop / VS Code
 	// launch, no shell handoff. See FlagCloneNextDryRun.
 	DryRun bool
+	// Output selects the per-repo summary format. Empty keeps the
+	// legacy terse stage messages; "terminal" additionally emits
+	// the standardized RepoTermBlock right before the clone, so the
+	// shape matches scan/clone-from/probe.
+	Output string
 }
 
 // parseCloneNextFlags parses flags for the clone-next command.
