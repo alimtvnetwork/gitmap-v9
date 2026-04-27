@@ -66,7 +66,7 @@ const DocsLayout = ({ children }: DocsLayoutProps) => {
                     <Moon className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">Dark theme (VS Code Dark+)</TooltipContent>
+                <TooltipContent side="bottom">Dark theme</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
