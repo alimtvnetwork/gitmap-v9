@@ -132,7 +132,9 @@ const (
 	FlagRegoldensDryRun          = "dry-run"
 	FlagDescRegoldensDryRun      = "Print the `go test` invocations that would run, then exit 0"
 	FlagRegoldensDiff            = "diff"
-	FlagDescRegoldensDiff        = "After pass 1, print a concise summary of which testdata/ golden files changed (added/modified/deleted) before pass 2 runs"
+	FlagDescRegoldensDiff        = "After pass 1, print a summary of touched testdata/ golden files. Modes: 'short' = one terse line per file (status + path + +/- counts); 'full' = adds rename details and aggregate totals. Usage: --diff=short or --diff=full"
+	RegoldensDiffModeShort       = "short"
+	RegoldensDiffModeFull        = "full"
 	RegoldensDefaultPackageGlob  = "./..."
 )
 
