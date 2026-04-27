@@ -109,8 +109,8 @@ func emitRegoldensDryRun(cfg regoldensFlags) {
 	), " ")
 	pass2 := strings.Join(goTestArgv(cfg), " ")
 	fmt.Fprintf(os.Stdout, constants.MsgRegoldensDryRun, pass1, pass2)
-	if cfg.showDiff {
-		fmt.Fprintln(os.Stdout, "  (--diff: golden diff summary would print between passes)")
+	if cfg.hasDiff() {
+		fmt.Fprintf(os.Stdout, "  (--diff=%s: golden diff summary would print between passes)\n", cfg.diffMode)
 	}
 }
 
