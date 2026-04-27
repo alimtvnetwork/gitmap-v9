@@ -1,23 +1,14 @@
 package startup
 
-// .lnk Startup folder backend. As of v3.176.0 this file uses an
-// in-process Shell Link writer (winshortcut_writer.go +
-// winshortcut_linkinfo.go) — no PowerShell shellout. The pure-Go
-// writer compiles on every OS, runs in microseconds (vs ~200ms for
-// powershell.exe), works on Server Core / restricted environments
-// without `powershell.exe` on PATH, and is unit-testable on Linux
-// CI without a Windows host.
+// .lnk Startup folder backend. Uses the in-process Shell Link
+// writer in winshortcut_writer.go + winshortcut_linkinfo.go — no
+// PowerShell shellout. Pure-Go, microsecond write, no powershell.exe
+// dependency, unit-testable on Linux CI. The legacy
+// createShortcutViaPowerShell helper in winshortcut_ps.go is
+// retained as a future fallback for non-trivial target shapes
+// (UNC, icons, args) but is not on the normal Add path.
 //
-// A runtime guard in addWindowsStartupFolder still rejects non-
-// Windows callers with the unsupported-OS error before any file
-// I/O is attempted — same defensive posture as before.
-//
-// The legacy PowerShell helper (winshortcut_ps.go) is kept as a
-// fallback that's no longer reached on the normal Add path. We
-// retain it in case a future caller hits a target shape the
-// minimal writer can't represent (e.g. UNC paths, custom icons).
-//
-// Marker contract: the .lnk filename uses the `gitmap-` prefix,
+// Marker contract: the .lnk filename uses the `gitmap-` prefix
 // AND a tracking subkey under HKCU\Software\Gitmap\StartupFolder\
 // <name> records the entry as ours. Both must agree before Remove
 // will delete the .lnk. Same belt-and-suspenders rule as the
