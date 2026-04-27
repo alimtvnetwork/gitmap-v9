@@ -267,7 +267,7 @@ func TestWindowsLifecycle_DualBackendListAggregation(t *testing.T) {
 		t.Fatalf("Add registry: %v", err)
 	}
 	if _, err := Add(AddOptions{Name: folderName,
-		Exec: `C:\Windows\System32\notepad.exe`,
+		Exec:    `C:\Windows\System32\notepad.exe`,
 		Backend: BackendStartupFolder}); err != nil {
 		t.Fatalf("Add startup-folder: %v", err)
 	}
