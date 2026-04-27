@@ -94,7 +94,7 @@ func bindRegoldensFlags(fs *flag.FlagSet, cfg *regoldensFlags) {
 		constants.FlagDescRegoldensSkipVerify)
 	fs.BoolVar(&cfg.isDryRun, constants.FlagRegoldensDryRun, false,
 		constants.FlagDescRegoldensDryRun)
-	fs.BoolVar(&cfg.showDiff, constants.FlagRegoldensDiff, false,
+	fs.StringVar(&cfg.diffMode, constants.FlagRegoldensDiff, "",
 		constants.FlagDescRegoldensDiff)
 }
 
