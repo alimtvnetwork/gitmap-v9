@@ -287,7 +287,7 @@ const CodeBlock = ({ code, language = "bash", title }: CodeBlockProps) => {
         </div>
 
         {/* Body */}
-        <div className={`overflow-auto ${fullscreen ? "flex-1" : "max-h-[500px]"}`}>
+        <div className={`docs-scroll overflow-auto ${fullscreen ? "flex-1" : "max-h-[500px]"}`}>
           <div className="flex">
             {showLineNumbers && (
               <div
