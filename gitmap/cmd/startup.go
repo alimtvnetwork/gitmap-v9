@@ -87,18 +87,26 @@ func parseStartupListFlags(args []string) (string, int, error) {
 }
 
 // runStartupRemove deletes a single managed entry. After --dry-run
-// is parsed off the args, exactly one positional name must remain;
-// missing or extra positionals trigger the usage error. All four
-// RemoveStatus outcomes map to a distinct user-visible message
-// (with a `(dry-run)` mirror set when --dry-run is active) so the
-// CLI is unambiguous about what happened — or what would happen.
+// and --backend are parsed off the args, exactly one positional
+// name must remain; missing or extra positionals trigger the usage
+// error. All four RemoveStatus outcomes map to a distinct user-
+// visible message (with a `(dry-run)` mirror set when --dry-run is
+// active) so the CLI is unambiguous about what happened — or what
+// would happen.
 func runStartupRemove(args []string) {
-	name, dryRun, err := parseStartupRemoveFlags(args)
+	name, dryRun, backendStr, err := parseStartupRemoveFlags(args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, constants.ErrStartupRemoveUsage)
 		os.Exit(2)
 	}
-	res, err := startup.RemoveWithOptions(name, startup.RemoveOptions{DryRun: dryRun})
+	backend, err := startup.ParseBackend(backendStr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(2)
+	}
+	res, err := startup.RemoveWithOptions(name, startup.RemoveOptions{
+		DryRun: dryRun, Backend: backend,
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
@@ -106,28 +114,33 @@ func runStartupRemove(args []string) {
 	printRemoveResult(name, res)
 }
 
-// parseStartupRemoveFlags pulls --dry-run off the args and returns
-// the remaining single positional name. Returns an error when the
-// positional count is wrong so the caller exits 2 with the usage
-// message — matching the pre-flag behavior for malformed invocations.
-func parseStartupRemoveFlags(args []string) (string, bool, error) {
+// parseStartupRemoveFlags pulls --dry-run and --backend off the
+// args and returns the remaining single positional name. Returns
+// an error when the positional count is wrong so the caller exits
+// 2 with the usage message — matching the pre-flag behavior for
+// malformed invocations.
+func parseStartupRemoveFlags(args []string) (string, bool, string, error) {
 	fs := flag.NewFlagSet(constants.CmdStartupRemove, flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	dryRun := fs.Bool(
 		constants.FlagStartupRemoveDryRun, false,
 		constants.FlagDescStartupRemoveDryRun,
 	)
+	backend := fs.String(
+		constants.FlagStartupRemoveBackend, "",
+		constants.FlagDescStartupRemoveBackend,
+	)
 	if err := fs.Parse(args); err != nil {
 
-		return "", false, err
+		return "", false, "", err
 	}
 	rest := fs.Args()
 	if len(rest) != 1 {
 
-		return "", false, fmt.Errorf("expected 1 positional name, got %d", len(rest))
+		return "", false, "", fmt.Errorf("expected 1 positional name, got %d", len(rest))
 	}
 
-	return rest[0], *dryRun, nil
+	return rest[0], *dryRun, *backend, nil
 }
 
 // printRemoveResult routes one of four messages depending on the
