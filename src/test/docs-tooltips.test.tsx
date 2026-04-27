@@ -344,6 +344,60 @@ describe("DocsTooltip — aria-label injection scope", () => {
       "explicit aria",
     );
   });
+
+  // Extra fallback-shape coverage: anything that is NOT a single valid
+  // React element must be wrapped in the synthesized fallback span and
+  // must NOT receive aria-label injection. We assert via the public
+  // wrapper marker (data-docs-tooltip-fallback="true") so the contract
+  // is observable from the rendered DOM, not from internal refs.
+  it("wraps a number child in a fallback wrapper without aria-label", () => {
+    render(
+      <TooltipProvider delayDuration={0} skipDelayDuration={0}>
+        <DocsTooltip label="should not leak">{42}</DocsTooltip>
+      </TooltipProvider>,
+    );
+    const wrapper = screen.getByText("42");
+    expect(wrapper.tagName).toBe("SPAN");
+    expect(wrapper.getAttribute("data-docs-tooltip-fallback")).toBe("true");
+    expect(wrapper.getAttribute("aria-label")).toBeNull();
+  });
+
+  it("wraps multi-children in a single fallback wrapper without aria-label", () => {
+    render(
+      <TooltipProvider delayDuration={0} skipDelayDuration={0}>
+        <DocsTooltip label="should not leak">
+          <span data-testid="multi-a">a</span>
+          <span data-testid="multi-b">b</span>
+        </DocsTooltip>
+      </TooltipProvider>,
+    );
+    // Inner real elements stay untouched.
+    expect(screen.getByTestId("multi-a").getAttribute("aria-label")).toBeNull();
+    expect(screen.getByTestId("multi-b").getAttribute("aria-label")).toBeNull();
+    // Their common parent IS the fallback wrapper carrying the marker.
+    const wrapper = screen.getByTestId("multi-a").parentElement!;
+    expect(wrapper.tagName).toBe("SPAN");
+    expect(wrapper.getAttribute("data-docs-tooltip-fallback")).toBe("true");
+    expect(wrapper.getAttribute("aria-label")).toBeNull();
+  });
+
+  it("renders a fallback wrapper with no aria-label when child is null", () => {
+    // A null child still yields a focusable fallback span (so the
+    // tooltip stays openable via keyboard) but with no injected name —
+    // callers passing null are expected to own their own a11y.
+    const { container } = render(
+      <TooltipProvider delayDuration={0} skipDelayDuration={0}>
+        <DocsTooltip label="should not leak">{null}</DocsTooltip>
+      </TooltipProvider>,
+    );
+    const wrapper = container.querySelector(
+      "[data-docs-tooltip-fallback]",
+    ) as HTMLElement | null;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper!.tagName).toBe("SPAN");
+    expect(wrapper!.getAttribute("data-docs-tooltip-fallback")).toBe("true");
+    expect(wrapper!.getAttribute("aria-label")).toBeNull();
+  });
 });
 
 // Real users routinely switch between pointer and keyboard mid-task
