@@ -51,9 +51,7 @@ func TestLatestBranchJSONContract_NoTopOmitsKey(t *testing.T) {
 		t.Fatalf("encode: %v", err)
 	}
 	assertGoldenBytes(t, "latest_branch_no_top.json", buf.Bytes())
-	assertObjectKeyOrder(t, buf.Bytes(), []string{
-		"branch", "remote", "sha", "commitDate", "subject", "ref",
-	})
+	assertSchemaKeysFirstObject(t, buf.Bytes(), "latest-branch-no-top")
 }
 
 // TestLatestBranchJSONContract_WithTopIncludesKey verifies the
