@@ -25,6 +25,7 @@ type regoldensFlags struct {
 	pkg        string
 	skipVerify bool
 	isDryRun   bool
+	showDiff   bool
 }
 
 // goTestUpdateEnvValue mirrors goldenguard.allowUpdateValue (which
@@ -78,6 +79,8 @@ func bindRegoldensFlags(fs *flag.FlagSet, cfg *regoldensFlags) {
 		constants.FlagDescRegoldensSkipVerify)
 	fs.BoolVar(&cfg.isDryRun, constants.FlagRegoldensDryRun, false,
 		constants.FlagDescRegoldensDryRun)
+	fs.BoolVar(&cfg.showDiff, constants.FlagRegoldensDiff, false,
+		constants.FlagDescRegoldensDiff)
 }
 
 // emitRegoldensDryRun prints both invocations without executing.
@@ -91,6 +94,9 @@ func emitRegoldensDryRun(cfg regoldensFlags) {
 	), " ")
 	pass2 := strings.Join(goTestArgv(cfg), " ")
 	fmt.Fprintf(os.Stdout, constants.MsgRegoldensDryRun, pass1, pass2)
+	if cfg.showDiff {
+		fmt.Fprintln(os.Stdout, "  (--diff: golden diff summary would print between passes)")
+	}
 }
 
 // goTestArgv returns the `go test ...` argv shared by both passes.
@@ -99,23 +105,10 @@ func goTestArgv(cfg regoldensFlags) []string {
 	return []string{"go", "test", cfg.pkg, "-run", cfg.pattern, "-count=1"}
 }
 
-// executeRegoldens runs pass 1, then (unless --skip-verify) pass 2.
-func executeRegoldens(cfg regoldensFlags) {
-	runRegoldensPass(cfg, true,
-		constants.MsgRegoldensPass1Header,
-		constants.ErrRegoldensPass1Failed)
-	if cfg.skipVerify {
-		fmt.Fprint(os.Stderr, constants.MsgRegoldensSkipVerify)
-		fmt.Fprintf(os.Stdout, constants.MsgRegoldensSuccessNoVeri,
-			cfg.pattern, cfg.pkg)
-		return
-	}
-	runRegoldensPass(cfg, false,
-		constants.MsgRegoldensPass2Header,
-		constants.ErrRegoldensPass2Failed)
-	fmt.Fprintf(os.Stdout, constants.MsgRegoldensSuccess,
-		cfg.pattern, cfg.pkg)
-}
+// executeRegoldens lives in regoldens_exec.go to keep this file
+// under the 200-line cap. The split is purely organizational.
+
+
 
 // runRegoldensPass prints the header, runs one pass, and exits 1
 // with the supplied error format on failure. withGate toggles the
