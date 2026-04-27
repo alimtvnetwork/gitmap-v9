@@ -862,3 +862,19 @@ html {
 .docs-scroll::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* Docs header focus ring — high-contrast, theme-aware (uses --ring + --background
+   for the offset so the ring stands out against both light and dark sidebars). */
+.docs-focus-ring {
+  outline: none;
+}
+.docs-focus-ring:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px hsl(var(--background)),
+    0 0 0 4px hsl(var(--ring)),
+    0 0 12px hsl(var(--ring) / 0.45);
+  border-radius: 4px;
+  transition: box-shadow 0.15s ease, outline-color 0.15s ease;
+}
