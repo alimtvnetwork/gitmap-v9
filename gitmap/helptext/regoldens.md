@@ -52,32 +52,22 @@ order, timestamps, locale-dependent floats). Fix the writer — do
 NOT re-run with `--skip-verify`.
 
 **Diff summary (`--diff=short|full`).** Between pass 1 and pass 2,
-prints a per-file report of every changed file under any
-`testdata/` directory. The mode controls how much detail you see.
-
-`--diff=short` — one terse line per file:
-
-```
-▸ Golden diff summary (testdata/ files touched by pass 1) [mode=short]:
-  M  gitmap/clonefrom/testdata/clonefrom_report_canonical.json
-  A  gitmap/formatter/testdata/scan_compact_v2.txt
-  ─ 2 file(s) changed: 1 added, 1 modified, 0 renamed, 0 deleted (+0 / -0 total)
-```
-
-`--diff=full` — line deltas + rename source paths:
+prints a per-file report of changed files under any `testdata/`
+directory. `short` = `status path` only. `full` = adds `(+adds / -dels)`,
+rename source lines (`↳ renamed from …`), and a `renamed` total.
 
 ```
 ▸ Golden diff summary (testdata/ files touched by pass 1) [mode=full]:
-  M  gitmap/clonefrom/testdata/clonefrom_report_canonical.json  (+3 / -1)
-  A  gitmap/formatter/testdata/scan_compact_v2.txt              (+42 / -0)
-  R  gitmap/formatter/testdata/scan_v3.txt                      (+0 / -0)
+  M  gitmap/clonefrom/testdata/report_canonical.json  (+3 / -1)
+  A  gitmap/formatter/testdata/scan_compact_v2.txt    (+42 / -0)
+  R  gitmap/formatter/testdata/scan_v3.txt            (+0 / -0)
       ↳ renamed from gitmap/formatter/testdata/scan_v2.txt
   ─ 3 file(s) changed: 1 added, 1 modified, 1 renamed, 0 deleted (+45 / -1 total)
 ```
 
 The summary fires whether pass 1 passed or failed (so partial
-fixture writes are visible before the process exits) and is
-skipped gracefully when the working tree is not a git repository.
+fixture writes are visible) and is skipped when the working tree
+is not a git repository.
 
 ## Examples
 
