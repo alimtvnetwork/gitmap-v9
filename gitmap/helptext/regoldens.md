@@ -53,23 +53,16 @@ order, timestamps, locale-dependent floats). Fix the writer — do
 NOT re-run with `--skip-verify`.
 
 **Diff summary (`--diff=short|full`).** Between pass 1 and pass 2,
-prints a per-file report of changed files under any `testdata/`
-directory. `short` = `status path` only. `full` = adds `(+adds / -dels)`,
-rename source lines (`↳ renamed from …`), and a `renamed` total.
+prints a per-file report of changed `testdata/` goldens. `short` =
+`status path`; `full` adds `(+adds / -dels)`, `↳ renamed from …`
+lines, and a `renamed` total. Fires even if pass 1 fails (so partial
+writes are visible); skipped when not in a git working tree.
 
-```
-▸ Golden diff summary (testdata/ files touched by pass 1) [mode=full]:
-  M  gitmap/clonefrom/testdata/report_canonical.json  (+3 / -1)
-  A  gitmap/formatter/testdata/scan_compact_v2.txt    (+42 / -0)
-  R  gitmap/formatter/testdata/scan_v3.txt            (+0 / -0)
-      ↳ renamed from gitmap/formatter/testdata/scan_v2.txt
-  ─ 3 file(s) changed: 1 added, 1 modified, 1 renamed, 0 deleted (+45 / -1 total)
-```
-
-The summary fires whether pass 1 passed or failed (so partial
-fixture writes are visible) and is skipped when the working tree
-is not a git repository.
-
+**Determinism pre-check (`--determinism`).** Runs `go test` first
+with the trigger ON but the allow-update gate OFF. Writers using
+`AllowUpdateAfterDeterminism` are exercised 3× and compared
+byte-for-byte; if any drift is found, exit 1 BEFORE pass 1, so no
+fixture is rewritten with non-deterministic bytes.
 ## Examples
 
 Regenerate the clone-from JSON report goldens and verify:
