@@ -32,6 +32,7 @@ Clone parallel + hierarchy (v3.101.0+): `gitmap clone --max-concurrency N` opt-i
 Commit-transfer family complete (v3.102.0+): `commit-left` / `commit-right` / `commit-both` all wired through `committransfer.runOneDirection`. commit-both = sequential L→R then R→L (interleave deferred).
 Shell handoff sentinel (v3.103.0+): `GITMAP_HANDOFF_FILE` temp-file pattern wired into clone-next/as/cd. Replaces broken `GITMAP_SHELL_HANDOFF` env var. Wrappers in `constants.CDFunc{Bash,Zsh,PowerShell}`.
 Commit-both --interleave (v3.104.0+): author-date merged stream variant via `RunBothInterleaved`; sequential remains default. CLI guard exits 2 if --interleave passed to commit-left/commit-right.
+Clone-pick / cpk (v3.153.0+, spec 100): sparse-checkout subset of repo into cwd. Auto-saves every run to `CloneInteractiveSelection` table; `--replay <id|name>` re-runs. `--ask` opens bubbletea tree picker. Short alias is `cpk` (NOT `ci` — collides with CI/CD).
 
 ## Memories
 - [Code Constraints](mem://style/code-constraints) — Strict rules for code style, structure, and pull requests
@@ -45,6 +46,7 @@ Commit-both --interleave (v3.104.0+): author-date merged stream variant via `Run
 - [CN Find-Next Bridge](mem://features/cn-find-next-bridge) — PLANNED v3.55.0: `gitmap cn` no-args detects scope, auto-probes (spec 103, depth=5, parallel), interactive TUI picker, parallel updates. `find-next` stays read-only.
 - [Clone Direct URL](mem://features/clone-direct-url) — gitmap clone accepts direct HTTPS/SSH URLs with optional folder name, auto-flattens versioned URLs
 - [Clone Audit](mem://features/clone-audit) — `gitmap clone --audit <manifest>` plans+prints diff-style report (+/~/=/?/!) without invoking git (v3.99.0)
+- [Clone Pick](mem://features/clone-pick) — `gitmap clone-pick`/`cpk`: sparse-checkout subset of a repo, optional `--ask` tree picker, auto-saves to `CloneInteractiveSelection` table, `--replay <id|name>` (spec 100, v3.153.0)
 - [Cross-Platform Install/Update](mem://features/cross-platform-install-update) — Canonical Win/macOS/Linux install · update · uninstall · verify matrix at spec/01-app/108-cross-platform-install-update.md, mirrored at /install-gitmap (v3.100.0)
 - [Clone Parallel + Hierarchy](mem://features/clone-parallel-hierarchy) — `gitmap clone --max-concurrency N` opt-in worker pool, hierarchy preserved at any N, thread-safe Progress + CloneCache (v3.101.0)
 - [Shell Handoff File](mem://features/shell-handoff-file) — `GITMAP_HANDOFF_FILE` sentinel-file pattern wired into clone-next/as/cd; replaces broken `os.Setenv("GITMAP_SHELL_HANDOFF", ...)` (v3.103.0)
