@@ -21,11 +21,28 @@ const DocsLayout = ({ children }: DocsLayoutProps) => {
         <DocsSidebar />
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
           <header className="sticky top-0 z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-sidebar-border bg-sidebar/95 px-3 py-2 backdrop-blur-sm">
-            <SidebarTrigger className="shrink-0 rounded-sm border border-sidebar-border bg-sidebar-accent/60 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SidebarTrigger
+                  aria-label="Toggle sidebar"
+                  className="shrink-0 rounded-sm border border-sidebar-border bg-sidebar-accent/60 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Toggle sidebar (navigation)</TooltipContent>
+            </Tooltip>
             <span className="shrink-0 text-sm font-mono text-foreground">gitmap docs</span>
-            <span className="shrink-0 rounded-sm border border-border bg-card px-2 py-0.5 text-[11px] font-mono text-muted-foreground shadow-sm">
-              {VERSION}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  tabIndex={0}
+                  aria-label={`gitmap version ${VERSION}`}
+                  className="shrink-0 cursor-default rounded-sm border border-border bg-card px-2 py-0.5 text-[11px] font-mono text-muted-foreground shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {VERSION}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Current gitmap version ({VERSION})</TooltipContent>
+            </Tooltip>
             <div
               role="radiogroup"
               aria-label="Color theme"
