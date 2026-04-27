@@ -49,6 +49,7 @@ func runClone(args []string) {
 	}
 	initCloneVerbose(cf.Verbose)
 	setCmdFaithfulVerify(cf.VerifyCmdFaithful)
+	setCmdFaithfulExitOnMismatch(cf.VerifyCmdFaithfulExitOnMismatch)
 	setCmdPrintArgv(cf.PrintCloneArgv)
 
 	// Audit short-circuits all execution paths. It must run BEFORE
@@ -56,6 +57,7 @@ func runClone(args []string) {
 	// while offline and without unlocking SSH agents.
 	if cf.Audit {
 		runCloneAudit(cf)
+		maybeExitOnCmdFaithfulMismatch()
 
 		return
 	}
@@ -68,18 +70,21 @@ func runClone(args []string) {
 	// silent comma-splitting of unquoted args (root cause of v3.78 regression).
 	if shouldUseMultiClone(cf) {
 		runCloneMulti(cf)
+		maybeExitOnCmdFaithfulMismatch()
 
 		return
 	}
 
 	if isDirectURL(cf.Source) {
 		executeDirectClone(cf.Source, cf.FolderName, cf.GHDesktop, cf.NoReplace, cf.Output)
+		maybeExitOnCmdFaithfulMismatch()
 
 		return
 	}
 
 	source := resolveCloneShorthand(cf.Source)
 	executeClone(source, cf.TargetDir, cf.SafePull, cf.GHDesktop, cf.MaxConcurrency, cf.DefaultBranch)
+	maybeExitOnCmdFaithfulMismatch()
 }
 
 // shouldUseMultiClone returns true when the positional args describe a

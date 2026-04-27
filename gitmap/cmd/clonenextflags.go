@@ -53,6 +53,11 @@ type CloneNextFlags struct {
 	Output string
 	// VerifyCmdFaithful enables the dry-run argv-vs-displayed checker.
 	VerifyCmdFaithful bool
+	// VerifyCmdFaithfulExitOnMismatch upgrades the verifier into a
+	// hard failure: any divergence sets a sticky bit and the run tail
+	// exits with constants.CloneVerifyCmdFaithfulExitCode. Implies
+	// VerifyCmdFaithful.
+	VerifyCmdFaithfulExitOnMismatch bool
 	// PrintCloneArgv dumps the executor argv to stderr.
 	PrintCloneArgv bool
 }
@@ -86,6 +91,8 @@ func parseCloneNextFlags(args []string) CloneNextFlags {
 	outputFlag := fs.String(constants.FlagCloneNextOutput, "", constants.FlagDescCloneNextOutput)
 	verifyFlag := fs.Bool(constants.FlagCloneVerifyCmdFaithful, false,
 		constants.FlagDescCloneVerifyCmdFaithful)
+	verifyExitFlag := fs.Bool(constants.FlagCloneVerifyCmdFaithfulExitOnMismatch,
+		false, constants.FlagDescCloneVerifyCmdFaithfulExitOnMismatch)
 	printArgvFlag := fs.Bool(constants.FlagClonePrintArgv, false,
 		constants.FlagDescClonePrintArgv)
 	// Reorder so flags placed AFTER the positional version (e.g.
@@ -107,10 +114,11 @@ func parseCloneNextFlags(args []string) CloneNextFlags {
 		MaxConcurrency: *maxConcFlag,
 		NoProgress:     *noProgressFlag,
 		ReportErrors:   *reportErrFlag,
-		DryRun:            *dryRunFlag,
-		Output:            *outputFlag,
-		VerifyCmdFaithful: *verifyFlag,
-		PrintCloneArgv:    *printArgvFlag,
+		DryRun:                          *dryRunFlag,
+		Output:                          *outputFlag,
+		VerifyCmdFaithful:               *verifyFlag,
+		VerifyCmdFaithfulExitOnMismatch: *verifyExitFlag,
+		PrintCloneArgv:                  *printArgvFlag,
 	}
 	if fs.NArg() > 0 {
 		out.VersionArg = fs.Arg(0)

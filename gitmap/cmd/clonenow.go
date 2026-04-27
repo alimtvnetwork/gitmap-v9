@@ -42,6 +42,11 @@ type cloneNowFlags struct {
 	// verifyCmdFaithful enables the dry-run argv-vs-displayed checker.
 	// See gitmap/cmd/clonetermverify.go for behavior.
 	verifyCmdFaithful bool
+	// verifyCmdFaithfulExitOnMismatch upgrades the verifier into a
+	// hard failure: any divergence sets a sticky bit and the run tail
+	// exits with constants.CloneVerifyCmdFaithfulExitCode. Implies
+	// verifyCmdFaithful — see setCmdFaithfulExitOnMismatch.
+	verifyCmdFaithfulExitOnMismatch bool
 	// printCloneArgv dumps the executor argv to stderr. Companion
 	// audit flag — see gitmap/cmd/cloneprintargv.go.
 	printCloneArgv bool
@@ -54,6 +59,7 @@ func runCloneNow(args []string) {
 	checkHelp("clone-now", args)
 	cfg := parseCloneNowFlags(args)
 	setCmdFaithfulVerify(cfg.verifyCmdFaithful)
+	setCmdFaithfulExitOnMismatch(cfg.verifyCmdFaithfulExitOnMismatch)
 	setCmdPrintArgv(cfg.printCloneArgv)
 	plan, err := clonenow.ParseFile(cfg.file, cfg.format, cfg.mode, cfg.onExists)
 	if err != nil {
@@ -62,10 +68,12 @@ func runCloneNow(args []string) {
 	}
 	if !cfg.execute {
 		runCloneNowDry(plan, cfg)
+		maybeExitOnCmdFaithfulMismatch()
 
 		return
 	}
 	runCloneNowExecute(plan, cfg)
+	maybeExitOnCmdFaithfulMismatch()
 }
 
 // parseCloneNowFlags wires flags + extracts the positional file
@@ -91,6 +99,9 @@ func parseCloneNowFlags(args []string) cloneNowFlags {
 		constants.FlagDescCloneTermOutput)
 	fs.BoolVar(&cfg.verifyCmdFaithful, constants.FlagCloneVerifyCmdFaithful,
 		false, constants.FlagDescCloneVerifyCmdFaithful)
+	fs.BoolVar(&cfg.verifyCmdFaithfulExitOnMismatch,
+		constants.FlagCloneVerifyCmdFaithfulExitOnMismatch, false,
+		constants.FlagDescCloneVerifyCmdFaithfulExitOnMismatch)
 	fs.BoolVar(&cfg.printCloneArgv, constants.FlagClonePrintArgv,
 		false, constants.FlagDescClonePrintArgv)
 	reordered := reorderFlagsBeforeArgs(args)

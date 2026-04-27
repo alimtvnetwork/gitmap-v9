@@ -27,6 +27,7 @@ func printCloneNextDryRun(url, dest string) {
 	fmt.Printf(constants.MsgCloneNextDryRunCmd,
 		constants.GitBin, constants.GitClone, url, dest)
 	fmt.Printf(constants.MsgCloneNextDryRunFooter, 1)
+	maybeExitOnCmdFaithfulMismatch()
 	os.Exit(0)
 }
 
@@ -47,6 +48,7 @@ func previewDryRunBatch(csvPath string, walkAll bool) {
 	fmt.Print(constants.MsgCloneNextDryRunHeader)
 	count := emitDryRunRows(repos)
 	fmt.Printf(constants.MsgCloneNextDryRunFooter, count)
+	maybeExitOnCmdFaithfulMismatch()
 	os.Exit(0)
 }
 

@@ -40,6 +40,11 @@ type cloneFromFlags struct {
 	output string
 	// verifyCmdFaithful enables the dry-run argv-vs-displayed checker.
 	verifyCmdFaithful bool
+	// verifyCmdFaithfulExitOnMismatch upgrades the verifier into a
+	// hard failure: any divergence sets a sticky bit and the run tail
+	// exits with constants.CloneVerifyCmdFaithfulExitCode. Implies
+	// verifyCmdFaithful.
+	verifyCmdFaithfulExitOnMismatch bool
 	// printCloneArgv dumps the executor argv to stderr.
 	printCloneArgv bool
 }
@@ -51,6 +56,7 @@ func runCloneFrom(args []string) {
 	checkHelp("clone-from", args)
 	cfg := parseCloneFromFlags(args)
 	setCmdFaithfulVerify(cfg.verifyCmdFaithful)
+	setCmdFaithfulExitOnMismatch(cfg.verifyCmdFaithfulExitOnMismatch)
 	setCmdPrintArgv(cfg.printCloneArgv)
 	plan, err := clonefrom.ParseFile(cfg.file)
 	if err != nil {
@@ -59,6 +65,7 @@ func runCloneFrom(args []string) {
 	}
 	if !cfg.execute {
 		runCloneFromDry(plan, cfg)
+		maybeExitOnCmdFaithfulMismatch()
 
 		return
 	}
@@ -82,6 +89,9 @@ func parseCloneFromFlags(args []string) cloneFromFlags {
 		constants.FlagDescCloneFromOutput)
 	fs.BoolVar(&cfg.verifyCmdFaithful, constants.FlagCloneVerifyCmdFaithful,
 		false, constants.FlagDescCloneVerifyCmdFaithful)
+	fs.BoolVar(&cfg.verifyCmdFaithfulExitOnMismatch,
+		constants.FlagCloneVerifyCmdFaithfulExitOnMismatch, false,
+		constants.FlagDescCloneVerifyCmdFaithfulExitOnMismatch)
 	fs.BoolVar(&cfg.printCloneArgv, constants.FlagClonePrintArgv,
 		false, constants.FlagDescClonePrintArgv)
 	reordered := reorderFlagsBeforeArgs(args)
@@ -152,6 +162,7 @@ func runCloneFromExecute(plan clonefrom.Plan, cfg cloneFromFlags) {
 	if err := clonefrom.RenderSummary(os.Stdout, results, reportPath); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
+	maybeExitOnCmdFaithfulMismatch()
 	os.Exit(cloneFromExitCode(results))
 }
 
