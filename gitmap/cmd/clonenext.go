@@ -37,6 +37,7 @@ func runCloneNext(args []string) {
 	checkHelp("clone-next", args)
 	cnFlags := parseCloneNextFlags(args)
 	setCmdFaithfulVerify(cnFlags.VerifyCmdFaithful)
+	setCmdFaithfulExitOnMismatch(cnFlags.VerifyCmdFaithfulExitOnMismatch)
 	setCmdPrintArgv(cnFlags.PrintCloneArgv)
 
 	if cnFlags.Verbose {
@@ -58,6 +59,7 @@ func runCloneNext(args []string) {
 			return
 		}
 		runCloneNextBatch(cnFlags.CSVPath, cnFlags.All, cnFlags.MaxConcurrency, cnFlags.NoProgress, cnFlags.ReportErrors)
+		maybeExitOnCmdFaithfulMismatch()
 
 		return
 	}
@@ -239,6 +241,7 @@ func runCloneNext(args []string) {
 	if cnFlags.Force {
 		fmt.Printf(constants.MsgCNDone, flattenedFolder)
 	}
+	maybeExitOnCmdFaithfulMismatch()
 }
 
 // extractRepoName extracts the repository name from a remote URL.

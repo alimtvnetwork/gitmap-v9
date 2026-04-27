@@ -27,6 +27,7 @@ func printCloneNextDryRun(url, dest string) {
 	fmt.Printf(constants.MsgCloneNextDryRunCmd,
 		constants.GitBin, constants.GitClone, url, dest)
 	fmt.Printf(constants.MsgCloneNextDryRunFooter, 1)
+	maybeExitOnCmdFaithfulMismatch()
 	os.Exit(0)
 }
 
