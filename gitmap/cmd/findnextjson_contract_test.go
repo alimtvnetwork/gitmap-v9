@@ -78,7 +78,5 @@ func TestFindNextJSONContract_CanonicalRow_KeyOrders(t *testing.T) {
 	if err := encodeFindNextJSON(&buf, rows); err != nil {
 		t.Fatalf("encode: %v", err)
 	}
-	assertObjectKeyOrder(t, buf.Bytes(), []string{
-		"repo", "nextVersionTag", "nextVersionNum", "method", "probedAt",
-	})
+	assertSchemaKeysFirstObject(t, buf.Bytes(), "find-next")
 }
