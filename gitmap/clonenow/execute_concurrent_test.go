@@ -63,9 +63,9 @@ func TestExecuteWithHooksConcurrent_PreservesInputOrder(t *testing.T) {
 
 func TestExecuteWithHooksConcurrent_HookOrderAndCount(t *testing.T) {
 	rows := []Row{
-		{RelativePath: "a", HTTPSUrl: "https://example.invalid/a.git"},
-		{RelativePath: "b", HTTPSUrl: "https://example.invalid/b.git"},
-		{RelativePath: "c", HTTPSUrl: "https://example.invalid/c.git"},
+		{RelativePath: "a"},
+		{RelativePath: "b"},
+		{RelativePath: "c"},
 	}
 	plan := Plan{Mode: constants.CloneNowModeHTTPS, Rows: rows}
 
