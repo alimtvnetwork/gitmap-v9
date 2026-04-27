@@ -41,17 +41,31 @@ func goldenDiffStatusRank(status string) int {
 }
 
 // printGoldenDiffEntries emits one line per file plus an aggregate
-// totals line. Counts are summed in a single pass for clarity.
-func printGoldenDiffEntries(entries []goldenDiffEntry) {
+// totals line. Output shape depends on mode: "short" omits +/-
+// counts and rename details; "full" includes both.
+func printGoldenDiffEntries(entries []goldenDiffEntry, mode string) {
 	totals := goldenDiffTotals{count: len(entries)}
 	for _, e := range entries {
-		fmt.Fprintf(os.Stdout, constants.MsgRegoldensDiffLine,
-			e.status, e.path, e.added, e.deleted)
+		printOneDiffEntry(e, mode)
 		totals.accumulate(e)
 	}
 	fmt.Fprintf(os.Stdout, constants.MsgRegoldensDiffTotals,
-		totals.count, totals.added, totals.modified, totals.deleted,
-		totals.linesAdded, totals.linesDeleted)
+		totals.count, totals.added, totals.modified, totals.renamed,
+		totals.deleted, totals.linesAdded, totals.linesDeleted)
+}
+
+// printOneDiffEntry renders a single entry per the requested mode.
+// The full mode appends a rename-source line for R entries.
+func printOneDiffEntry(e goldenDiffEntry, mode string) {
+	if mode == constants.RegoldensDiffModeShort {
+		fmt.Fprintf(os.Stdout, constants.MsgRegoldensDiffLineShort, e.status, e.path)
+		return
+	}
+	fmt.Fprintf(os.Stdout, constants.MsgRegoldensDiffLineFull,
+		e.status, e.path, e.added, e.deleted)
+	if e.status == "R" && e.renamedFrom != "" {
+		fmt.Fprintf(os.Stdout, constants.MsgRegoldensDiffRenameFull, e.renamedFrom)
+	}
 }
 
 // goldenDiffTotals aggregates per-status counts and total +/- lines.
@@ -59,6 +73,7 @@ type goldenDiffTotals struct {
 	count        int
 	added        int
 	modified     int
+	renamed      int
 	deleted      int
 	linesAdded   int
 	linesDeleted int
@@ -72,6 +87,8 @@ func (t *goldenDiffTotals) accumulate(e goldenDiffEntry) {
 		t.added++
 	case "D":
 		t.deleted++
+	case "R":
+		t.renamed++
 	default:
 		t.modified++
 	}
