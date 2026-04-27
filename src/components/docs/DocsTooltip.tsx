@@ -65,9 +65,27 @@ const withAccessibleName = (
 // every icon-only trigger automatically receives an aria-label
 // derived from `label` (or the explicit `ariaLabel` prop).
 // Do NOT inline a raw <Tooltip> in docs surfaces.
+// Radix's TooltipTrigger uses Slot+React.Children.only under the hood,
+// which throws when given a string, number, fragment, null, or
+// multiple children. To make DocsTooltip safe for ANY child shape
+// (defensive rendering — never let a tooltip crash the docs chrome)
+// we normalize non-single-element children into a focusable <span>.
+// The wrapper keeps tabIndex=0 so keyboard users can still focus
+// the trigger and surface the tooltip body.
+const normalizeTrigger = (child: ReactNode): ReactElement => {
+  const count = Children.count(child);
+  if (count === 1 && isValidElement(child)) return child;
+  return (
+    <span tabIndex={0} className="inline-flex">
+      {child}
+    </span>
+  );
+};
+
 export const DocsTooltip = ({ children, label, ariaLabel }: DocsTooltipProps) => {
   const accessibleName = resolveAccessibleName(label, ariaLabel);
-  const trigger = withAccessibleName(children, accessibleName);
+  const normalized = normalizeTrigger(children);
+  const trigger = withAccessibleName(normalized, accessibleName);
   return (
     <Tooltip>
       <TooltipTrigger asChild>{trigger}</TooltipTrigger>
