@@ -46,10 +46,11 @@ func withRecordingExiter(t *testing.T) *int {
 func fixtureMismatchInput() (CloneTermBlockInput, []string) {
 	in := CloneTermBlockInput{
 		Name:        "scripts-fixer",
-		FromURL:     "https://example.com/scripts-fixer.git",
-		ToURL:       "https://example.com/scripts-fixer.git",
+		OriginalURL: "https://example.com/scripts-fixer.git",
+		TargetURL:   "https://example.com/scripts-fixer.git",
 		Branch:      "main",
-		Destination: "scripts-fixer",
+		CmdBranch:   "main",
+		Dest:        "scripts-fixer",
 	}
 	executorArgv := []string{"clone", "-b", "develop",
 		"https://example.com/scripts-fixer.git", "scripts-fixer"}
