@@ -79,7 +79,7 @@ type clonePickParsed struct {
 // two positional args. Validation that needs cross-flag knowledge
 // happens in clonepick.ParseArgs so this stays focused on flag
 // binding.
-func parseClonePickFlags(args []string) (string, string, clonepick.Flags, string, bool) {
+func parseClonePickFlags(args []string) clonePickParsed {
 	defaults := clonepick.DefaultFlags()
 	flags := defaults
 	fs := flag.NewFlagSet("clone-pick", flag.ExitOnError)
@@ -109,6 +109,8 @@ func parseClonePickFlags(args []string) (string, string, clonepick.Flags, string
 		constants.FlagDescCloneTermOutput)
 	verify := fs.Bool(constants.FlagCloneVerifyCmdFaithful, false,
 		constants.FlagDescCloneVerifyCmdFaithful)
+	printArgv := fs.Bool(constants.FlagClonePrintArgv, false,
+		constants.FlagDescClonePrintArgv)
 
 	reordered := reorderFlagsBeforeArgs(args)
 	fs.Parse(reordered)
@@ -117,13 +119,19 @@ func parseClonePickFlags(args []string) (string, string, clonepick.Flags, string
 		fmt.Fprintln(os.Stderr, constants.MsgClonePickMissingURL)
 		os.Exit(2)
 	}
-	rawURL := fs.Arg(0)
 	rawPaths := ""
 	if fs.NArg() >= 2 {
 		rawPaths = fs.Arg(1)
 	}
 
-	return rawURL, rawPaths, flags, *output, *verify
+	return clonePickParsed{
+		RawURL:            fs.Arg(0),
+		RawPaths:          rawPaths,
+		Flags:             flags,
+		Output:            *output,
+		VerifyCmdFaithful: *verify,
+		PrintCloneArgv:    *printArgv,
+	}
 }
 
 // runClonePickExecute opens the DB (best-effort), runs the
