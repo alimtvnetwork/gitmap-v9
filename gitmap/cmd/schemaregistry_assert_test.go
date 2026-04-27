@@ -56,16 +56,21 @@ func assertSchemaKeysArray(t *testing.T, raw []byte, name string) {
 	}
 }
 
-// assertSchemaKeysObject loads schema `name` and walks a single
-// JSON object via Decoder.Token (same path as assertObjectKeyOrder
-// in jsoncontract_helpers_test.go). On drift, routes through the
-// same accept/update flow as the array variant.
-func assertSchemaKeysObject(t *testing.T, raw []byte, name string) {
+// assertSchemaKeysFirstObject loads schema `name` and asserts the
+// FIRST top-level object's keys match. Handles both shapes the
+// existing readFirstObjectKeys helper supports:
+//
+//   - {...}        — single-object output (e.g. latest-branch)
+//   - [{...}, ...] — array output (checks only the first object;
+//                    use assertSchemaKeysArray to check every row)
+//
+// Routes through the same accept/update flow as the array variant.
+func assertSchemaKeysFirstObject(t *testing.T, raw []byte, name string) {
 	t.Helper()
 	expected := loadSchema(t, name)
-	got := readSingleObjectKeys(t, raw)
+	got := readFirstObjectKeys(t, raw)
 	if !equalStringSlices(got, expected.Keys) {
-		handleSchemaDrift(t, expected, got, "object")
+		handleSchemaDrift(t, expected, got, "first object")
 	}
 }
 
@@ -77,20 +82,6 @@ func assertSchemaKeysObject(t *testing.T, raw []byte, name string) {
 func assertSchemaKeysSlice(t *testing.T, name string) []string {
 	t.Helper()
 	return loadSchema(t, name).Keys
-}
-
-// readSingleObjectKeys walks one top-level JSON object via
-// Decoder.Token() so on-the-wire key order is observable. Mirrors
-// the single-object branch of assertObjectKeyOrder in
-// jsoncontract_helpers_test.go but returns the keys for the caller
-// to compare instead of doing the comparison itself.
-func readSingleObjectKeys(t *testing.T, raw []byte) []string {
-	t.Helper()
-	dec := json.NewDecoder(strings.NewReader(string(raw)))
-	if err := expectDelim(dec, '{'); err != nil {
-		t.Fatalf("expected top-level object: %v", err)
-	}
-	return collectObjectKeys(t, dec)
 }
 
 // handleSchemaDrift is the single decision point for "the test
