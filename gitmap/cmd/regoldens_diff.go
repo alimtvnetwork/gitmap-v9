@@ -30,10 +30,9 @@ type goldenDiffEntry struct {
 	deleted     int
 }
 
-// goldenDiffPathFragment scopes both `git status` and `git diff`
-// output to fixture files. Anything outside `testdata/` is filtered
-// because regenerate passes should only touch those paths.
-const goldenDiffPathFragment = "testdata/"
+// Path-scope predicates (goldenDiffPathFragment, goldenDiffBasenameFragment,
+// isGoldenFixturePath) live in regoldens_diff_scope.go to keep this
+// file under the 200-line cap.
 
 // emitGoldenDiffSummary prints the post-pass-1 diff summary in the
 // requested mode ("short" | "full"). Errors from git invocations are
@@ -98,7 +97,7 @@ func readPorcelainStatuses() (map[string]goldenDiffEntry, error) {
 			continue
 		}
 		path, from := splitPorcelainPath(line[3:])
-		if !strings.Contains(path, goldenDiffPathFragment) {
+		if !isGoldenFixturePath(path) {
 			continue
 		}
 		result[path] = goldenDiffEntry{
@@ -153,6 +152,9 @@ func readNumstatCounts() (map[string][2]int, error) {
 	for _, line := range strings.Split(out, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) < 3 {
+			continue
+		}
+		if !isGoldenFixturePath(fields[2]) {
 			continue
 		}
 		added, _ := strconv.Atoi(fields[0])   // "-" (binary) becomes 0
