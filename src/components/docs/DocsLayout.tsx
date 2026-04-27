@@ -36,7 +36,7 @@ const DocsLayout = ({ children }: DocsLayoutProps) => {
                 <span
                   tabIndex={0}
                   aria-label={`gitmap version ${VERSION}`}
-                  className="shrink-0 cursor-default rounded-sm border border-border bg-card px-2 py-0.5 text-[11px] font-mono text-muted-foreground shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="docs-focus-ring shrink-0 cursor-default rounded-sm border border-border bg-card px-2 py-0.5 text-[11px] font-mono text-muted-foreground shadow-sm"
                 >
                   {VERSION}
                 </span>
