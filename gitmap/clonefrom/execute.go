@@ -74,14 +74,7 @@ func Execute(plan Plan, cwd string, progress io.Writer) []Result {
 // failures from git), build git args, run, time, return.
 func executeRow(r Row, cwd string) Result {
 	start := time.Now()
-	dest := r.Dest
-	if len(dest) == 0 {
-		dest = DeriveDest(r.URL)
-	}
-	absDest := dest
-	if !filepath.IsAbs(absDest) {
-		absDest = filepath.Join(cwd, dest)
-	}
+	dest, absDest := resolveDest(r, cwd)
 	if shouldSkip(absDest) {
 		return Result{Row: r, Dest: dest, Status: constants.CloneFromStatusSkipped,
 			Detail: constants.MsgCloneFromDestExists, Duration: time.Since(start)}
@@ -98,6 +91,22 @@ func executeRow(r Row, cwd string) Result {
 
 	return Result{Row: r, Dest: dest, Status: status, Detail: detail,
 		Duration: time.Since(start)}
+}
+
+// resolveDest computes (rowDest, absoluteDest). rowDest is what
+// goes into the Result + report; absDest drives the skip-check
+// and parent-mkdir against the actual filesystem.
+func resolveDest(r Row, cwd string) (string, string) {
+	dest := r.Dest
+	if len(dest) == 0 {
+		dest = DeriveDest(r.URL)
+	}
+	absDest := dest
+	if !filepath.IsAbs(absDest) {
+		absDest = filepath.Join(cwd, dest)
+	}
+
+	return dest, absDest
 }
 
 // prepareDestParent ensures the parent dir of the resolved dest
