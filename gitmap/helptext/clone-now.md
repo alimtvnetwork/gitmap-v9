@@ -66,12 +66,8 @@ least one of `httpsUrl` / `sshUrl` is set.
 | `httpsUrl` | one of two | `--mode https` clone URL | Falls back to `sshUrl` if empty. |
 | `sshUrl`   | one of two | `--mode ssh` clone URL   | Falls back to `httpsUrl` if empty. |
 | `branch` | optional | `git clone -b <branch>` | Empty = clone default branch. |
-| `branchSource` | informational | provenance only | Ignored by the executor. |
 | `relativePath` | recommended | clone destination (relative to `--cwd`) | If empty, derived from URL basename (sans `.git`). |
-| `absolutePath` | informational | provenance only | Ignored by the executor. |
-| `cloneInstruction` | informational | display only | The original `git clone ...` line; not re-executed. |
-| `notes` | informational | display only | Free-form. |
-| `depth` | informational | reserved | Currently ignored (no `--depth` support yet). |
+| `branchSource`, `absolutePath`, `cloneInstruction`, `notes`, `depth` | informational | display / provenance only | Read for round-trip fidelity but **not** acted on by the executor. |
 
 ### Text-format line shape
 
@@ -84,18 +80,10 @@ branch). `<dest>` falls back to the URL basename when omitted.
 
 ## Behavior
 
-- **Folder structure is preserved**: each row clones into its
-  recorded `relativePath` (relative to `--cwd` or the current
-  directory), so the destination tree mirrors the original layout.
-- **Mode selection**: `--mode https` (default) clones via the
-  recorded HTTPS URL; `--mode ssh` uses the SSH URL. If the chosen
-  URL is empty on a row, `clone-now` falls back to the other one
-  rather than skipping.
-- **Idempotent**: a destination directory that already exists and is
-  non-empty is reported as `skipped`, not re-cloned. Re-running the
-  same input is safe.
-- **Sequential**: rows are cloned in input order. Parallel fan-out
-  is a future addition.
+- **Folder structure preserved**: each row clones into its `relativePath` (relative to `--cwd`), mirroring the original layout.
+- **Mode selection**: `--mode https`/`ssh` picks the URL column; falls back to the other when the preferred one is empty.
+- **Idempotent**: an existing non-empty destination is reported `skipped`, not re-cloned. Re-running the same input is safe.
+- **Sequential**: rows clone in input order. Parallel fan-out is a future addition.
 
 ## Exit codes
 
