@@ -157,6 +157,11 @@ type CloneFlags struct {
 	// VerifyCmdFaithful enables the dry-run argv-vs-displayed
 	// checker. See clonetermverify.go for behavior.
 	VerifyCmdFaithful bool
+	// VerifyCmdFaithfulExitOnMismatch upgrades the verifier into a
+	// hard failure: any divergence sets a sticky bit and the run tail
+	// exits with constants.CloneVerifyCmdFaithfulExitCode. Implies
+	// VerifyCmdFaithful.
+	VerifyCmdFaithfulExitOnMismatch bool
 	// PrintCloneArgv dumps the executor's literal argv tokens to
 	// stderr. See cloneprintargv.go for behavior.
 	PrintCloneArgv bool
@@ -183,26 +188,29 @@ func parseCloneFlags(args []string) CloneFlags {
 	outputFlag := fs.String(constants.FlagCloneTermOutput, "", constants.FlagDescCloneTermOutput)
 	verifyFlag := fs.Bool(constants.FlagCloneVerifyCmdFaithful, false,
 		constants.FlagDescCloneVerifyCmdFaithful)
+	verifyExitFlag := fs.Bool(constants.FlagCloneVerifyCmdFaithfulExitOnMismatch,
+		false, constants.FlagDescCloneVerifyCmdFaithfulExitOnMismatch)
 	printArgvFlag := fs.Bool(constants.FlagClonePrintArgv, false,
 		constants.FlagDescClonePrintArgv)
 	fs.Parse(args)
 
 	return CloneFlags{
-		Source:            resolveCloneSource(fs),
-		FolderName:        resolveCloneFolderName(fs),
-		TargetDir:         *targetFlag,
-		SSHKeyName:        *sshKeyFlag,
-		DefaultBranch:     *defaultBranchFlag,
-		Positional:        fs.Args(),
-		SafePull:          *safePullFlag,
-		GHDesktop:         *ghDesktopFlag,
-		NoReplace:         *noReplaceFlag,
-		Verbose:           *verboseFlag,
-		Audit:             *auditFlag,
-		MaxConcurrency:    *maxConcFlag,
-		Output:            *outputFlag,
-		VerifyCmdFaithful: *verifyFlag,
-		PrintCloneArgv:    *printArgvFlag,
+		Source:                          resolveCloneSource(fs),
+		FolderName:                      resolveCloneFolderName(fs),
+		TargetDir:                       *targetFlag,
+		SSHKeyName:                      *sshKeyFlag,
+		DefaultBranch:                   *defaultBranchFlag,
+		Positional:                      fs.Args(),
+		SafePull:                        *safePullFlag,
+		GHDesktop:                       *ghDesktopFlag,
+		NoReplace:                       *noReplaceFlag,
+		Verbose:                         *verboseFlag,
+		Audit:                           *auditFlag,
+		MaxConcurrency:                  *maxConcFlag,
+		Output:                          *outputFlag,
+		VerifyCmdFaithful:               *verifyFlag,
+		VerifyCmdFaithfulExitOnMismatch: *verifyExitFlag,
+		PrintCloneArgv:                  *printArgvFlag,
 	}
 }
 
