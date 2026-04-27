@@ -38,8 +38,28 @@ func validateRow(r Row) error {
 
 		return fmt.Errorf(constants.ErrCloneFromNegDepth, r.Depth)
 	}
+	if !isValidCheckout(r.Checkout) {
+
+		return fmt.Errorf(constants.ErrCloneFromBadCheckout, r.Checkout)
+	}
 
 	return nil
+}
+
+// isValidCheckout accepts the empty string (means "inherit global
+// default") plus the three explicit modes. Centralized so both the
+// row-level validator and the CLI flag validator share one truth.
+func isValidCheckout(v string) bool {
+	switch v {
+	case "",
+		constants.CloneFromCheckoutAuto,
+		constants.CloneFromCheckoutSkip,
+		constants.CloneFromCheckoutForce:
+
+		return true
+	}
+
+	return false
 }
 
 // looksLikeGitURL is a permissive shape check. We deliberately do
