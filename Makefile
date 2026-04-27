@@ -1,4 +1,4 @@
-.PHONY: lint vet test build clean setup vulncheck all release release-dry changelog changelog-check
+.PHONY: lint vet test build clean setup vulncheck all release release-dry changelog changelog-check goldens-regen goldens-verify
 
 GO       := go
 LINT     := golangci-lint
