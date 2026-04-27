@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/clonenow"
+	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
 )
 
 // printCloneNowTermBlocks emits one block per plan row to stdout
