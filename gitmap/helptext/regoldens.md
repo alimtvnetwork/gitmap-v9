@@ -18,7 +18,7 @@ into a single command, so contributors cannot accidentally:
 ## Synopsis
 
 ```
-gitmap regoldens --pattern <TestPattern> [--package <pkg>] [--skip-verify] [--dry-run] [--diff]
+gitmap regoldens --pattern <TestPattern> [--package <pkg>] [--skip-verify] [--dry-run] [--diff=short|full]
 gitmap rg --pattern <TestPattern>                               # short alias
 ```
 
