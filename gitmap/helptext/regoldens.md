@@ -104,7 +104,10 @@ Regenerate and inspect which goldens changed before verification:
 
 ```
 gitmap rg --pattern TestCloneFromReportJSON_Golden \
-  --package ./gitmap/clonefrom/ --diff
+  --package ./gitmap/clonefrom/ --diff=short
+
+gitmap rg --pattern TestCloneFromReportJSON_Golden \
+  --package ./gitmap/clonefrom/ --diff=full
 ```
 
 ## Exit codes
