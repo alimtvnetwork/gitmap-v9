@@ -99,6 +99,16 @@ const (
 	FlagDescClonePrintArgv = "Print the exact git-clone argv tokens " +
 		"to stderr (one per line, `argv[i]=<token>`) right after each " +
 		"terminal block. Audit-only — does not change clone behavior."
+
+	// MsgCloneVerifyCmdFaithfulExit is the one-line stderr summary
+	// printed immediately before the process exits with
+	// CloneVerifyCmdFaithfulExitCode. Phrased as a single sentence so
+	// CI UIs that surface the LAST stderr line as the failure reason
+	// produce a self-explanatory headline.
+	MsgCloneVerifyCmdFaithfulExit = "verify-cmd-faithful: FAIL - " +
+		"one or more cmd: lines did not match the executor's argv " +
+		"(see per-row reports above); exiting with code 3 because " +
+		"--verify-cmd-faithful-exit-on-mismatch was set"
 )
 
 
