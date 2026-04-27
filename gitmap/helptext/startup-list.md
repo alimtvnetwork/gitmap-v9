@@ -9,6 +9,7 @@ gitmap startup-list
 gitmap startup-list --format=json
 gitmap startup-list --format=jsonl
 gitmap startup-list --format=csv
+gitmap startup-list --backend=registry --name=watch
 gitmap sl --format=table
 ```
 
@@ -21,6 +22,7 @@ Scans the OS-appropriate autostart directory for files that satisfy
 |------------|--------------------------------------------------------|-------------|-----------|---------------------------------|
 | Linux/Unix | `$XDG_CONFIG_HOME/autostart/` or `~/.config/autostart/`| `gitmap-`   | `.desktop`| `X-Gitmap-Managed=true` line    |
 | macOS      | `~/Library/LaunchAgents/`                              | `gitmap.`   | `.plist`  | `<key>XGitmapManaged</key><true/>` |
+| Windows    | `HKCU\...\Run` + Startup folder                        | `gitmap-`   | n/a / `.lnk` | tracking subkey under `HKCU\Software\Gitmap\Startup*\<name>` |
 
 Third-party autostart entries are silently ignored, even if their
 filename happens to start with the gitmap prefix. The marker is the
@@ -33,10 +35,23 @@ have to open every unrelated file in the directory.
 |------|---------|-------------|
 | `--format` | `table` | Output format: `table`, `json`, `jsonl`, or `csv` |
 | `--json-indent` | `2` | Spaces per indent level for `--format=json`. `0` = minified single line. Range: 0..8. Ignored for non-json formats. |
+| `--backend` | _(all)_ | Filter by backend: `registry` or `startup-folder`. Empty = both. Linux/macOS entries match neither, so passing `--backend` on those OSes returns zero rows. |
+| `--name` | _(all)_ | Filter by logical entry name (the same value passed to `startup-add --name`). Exact match against the stripped name (no `gitmap-` prefix, no `.desktop` / `.plist` / `.lnk` suffix). |
 
 `table` (alias: `terminal`) is the legacy human-readable rendering.
-Bad `--format` values and out-of-range `--json-indent` both exit 2.
-`--json-indent` is validated even when the format ignores it.
+Bad `--format`, unknown `--backend`, and out-of-range `--json-indent`
+all exit 2. `--json-indent` is validated even when the format
+ignores it. `--backend` and `--name` combine with AND semantics —
+passing both narrows to entries that match both filters, useful for
+verifying a specific entry exists in a specific backend:
+
+```
+gitmap startup-list --backend=registry --name=watch --format=json
+```
+
+returns either a one-element JSON array (entry exists in the
+registry backend) or `[]` (it doesn't), with no extra parsing
+needed.
 
 ## Output formats
 
