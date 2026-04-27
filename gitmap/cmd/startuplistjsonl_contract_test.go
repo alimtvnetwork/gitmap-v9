@@ -112,7 +112,7 @@ func TestStartupListJSONL_KeyOrderStable(t *testing.T) {
 	if err := encodeStartupListJSONL(&buf, entries); err != nil {
 		t.Fatalf("encode: %v", err)
 	}
-	wantKeys := []string{"name", "path", "exec"}
+	wantKeys := assertSchemaKeysSlice(t, "startup-list")
 	scanner := bufio.NewScanner(&buf)
 	lineNo := 0
 	for scanner.Scan() {
