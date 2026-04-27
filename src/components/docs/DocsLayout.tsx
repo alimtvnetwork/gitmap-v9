@@ -25,7 +25,7 @@ const DocsLayout = ({ children }: DocsLayoutProps) => {
               <TooltipTrigger asChild>
                 <SidebarTrigger
                   aria-label="Toggle sidebar"
-                  className="shrink-0 rounded-sm border border-sidebar-border bg-sidebar-accent/60 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  className="docs-focus-ring shrink-0 rounded-sm border border-sidebar-border bg-sidebar-accent/60 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 />
               </TooltipTrigger>
               <TooltipContent side="bottom">Toggle sidebar (navigation)</TooltipContent>
