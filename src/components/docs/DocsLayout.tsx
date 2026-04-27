@@ -19,17 +19,17 @@ const DocsLayout = ({ children }: DocsLayoutProps) => {
       <div className="min-h-screen flex w-full bg-background text-foreground">
         <DocsSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-10 flex h-12 items-center border-b border-sidebar-border bg-sidebar/95 backdrop-blur-sm">
-            <SidebarTrigger className="ml-3 rounded-sm border border-sidebar-border bg-sidebar-accent/60 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
-            <span className="ml-3 text-[11px] font-mono uppercase tracking-[0.16em] text-muted-foreground">Explorer</span>
-            <span className="ml-3 text-sm font-mono text-foreground">gitmap docs</span>
-            <span className="ml-2 rounded-sm border border-border bg-card px-2 py-0.5 text-[11px] font-mono text-muted-foreground shadow-sm">
+          <header className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 overflow-x-auto whitespace-nowrap border-b border-sidebar-border bg-sidebar/95 px-3 backdrop-blur-sm">
+            <SidebarTrigger className="shrink-0 rounded-sm border border-sidebar-border bg-sidebar-accent/60 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
+            <span className="shrink-0 text-[11px] font-mono uppercase tracking-[0.16em] text-muted-foreground">Explorer</span>
+            <span className="shrink-0 text-sm font-mono text-foreground">gitmap docs</span>
+            <span className="shrink-0 rounded-sm border border-border bg-card px-2 py-0.5 text-[11px] font-mono text-muted-foreground shadow-sm">
               {VERSION}
             </span>
             <div
               role="radiogroup"
               aria-label="Color theme"
-              className="ml-2 inline-flex items-center rounded-sm border border-border bg-card p-0.5 shadow-sm"
+              className="inline-flex shrink-0 items-center rounded-sm border border-border bg-card p-0.5 shadow-sm"
             >
               <button
                 type="button"
@@ -63,21 +63,23 @@ const DocsLayout = ({ children }: DocsLayoutProps) => {
               </button>
             </div>
             <span
-              className="ml-2 hidden sm:inline text-[11px] font-mono text-muted-foreground"
+              className="hidden shrink-0 text-[11px] font-mono text-muted-foreground lg:inline"
               aria-live="polite"
             >
               {dark ? "VS Code Dark+" : "VS Code Light+"}
             </span>
             {isSystem && (
               <span
-                className="ml-1.5 hidden sm:inline rounded-sm border border-border bg-card px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-[0.12em] text-muted-foreground shadow-sm"
+                className="hidden shrink-0 rounded-sm border border-border bg-card px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-[0.12em] text-muted-foreground shadow-sm lg:inline"
                 title="Following OS prefers-color-scheme — pick Dark or Light to override"
               >
                 System
               </span>
             )}
-            <CopyPaletteButton />
-            <div className="ml-auto mr-3">
+            <div className="shrink-0">
+              <CopyPaletteButton />
+            </div>
+            <div className="ml-auto shrink-0">
               <CommandPalette />
             </div>
           </header>
