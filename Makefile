@@ -65,3 +65,35 @@ changelog:
 ## so partial-update PRs can verify only their slice.
 changelog-check:
 	@cd scripts/changelog && $(GO) run . -mode=check -version=$(VERSION) -repo=../.. -since=$(SINCE) -release-tag=$(RELEASE_TAG)
+
+## Goldens-regen — regenerate golden fixtures for a specific test pattern.
+## REQUIRES RUN=<pattern> (forwarded to `go test -run`). Sets BOTH gating
+## env vars (GITMAP_UPDATE_GOLDEN=1 + GITMAP_ALLOW_GOLDEN_UPDATE=1) so the
+## determinism pre-check and AllowUpdate gate both unlock. PKG defaults to
+## ./... but should be narrowed for speed (e.g. PKG=./cmd/...).
+## Usage:
+##   make goldens-regen RUN=TestStartupListJSONContract
+##   make goldens-regen RUN=FindNextJSONContract PKG=./cmd/...
+PKG ?= ./...
+goldens-regen:
+	@if [ -z "$(RUN)" ]; then \
+		echo "ERROR: RUN=<test pattern> is required (e.g. make goldens-regen RUN=TestFooContract)"; \
+		exit 2; \
+	fi
+	@echo "▸ Regenerating goldens: pattern=$(RUN) pkg=$(PKG)"
+	@cd $(MODULE) && GITMAP_UPDATE_GOLDEN=1 GITMAP_ALLOW_GOLDEN_UPDATE=1 \
+		$(GO) test $(PKG) -run '$(RUN)' -count=1 -v
+
+## Goldens-verify — re-run the same pattern WITHOUT the gating env vars to
+## confirm regenerated fixtures pass cleanly. This is the mandatory second
+## pass: if it fails, the writers are non-deterministic or drift remains.
+## Usage:
+##   make goldens-verify RUN=TestStartupListJSONContract
+goldens-verify:
+	@if [ -z "$(RUN)" ]; then \
+		echo "ERROR: RUN=<test pattern> is required (e.g. make goldens-verify RUN=TestFooContract)"; \
+		exit 2; \
+	fi
+	@echo "▸ Verifying goldens (no env gates): pattern=$(RUN) pkg=$(PKG)"
+	@cd $(MODULE) && unset GITMAP_UPDATE_GOLDEN GITMAP_ALLOW_GOLDEN_UPDATE && \
+		$(GO) test $(PKG) -run '$(RUN)' -count=1 -v
