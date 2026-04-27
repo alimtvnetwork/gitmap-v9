@@ -15,6 +15,8 @@ package cmd
 // already does and gives the user a live, scannable transcript.
 
 import (
+	"fmt"
+
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/clonefrom"
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/clonenow"
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
@@ -25,6 +27,14 @@ import (
 // printCloneNowTermBlocks (the batch variant) so streaming and
 // upfront output stay byte-for-byte identical per row — only the
 // timing changes.
+//
+// Faithfulness: clonenow's executor (clonenow/execute.go
+// buildGitArgs) only passes `-b` when row.Branch is non-empty —
+// the ls-remote-detected fallback we show on the `branch:` line
+// is informational only. CmdBranch is therefore pinned to
+// row.Branch (NOT the detected fallback) so the printed cmd
+// matches the real argv exactly. URL/dest are passed through
+// from the executor's resolveRowDisplay.
 func printCloneNowTermBlockRow(index, total int, row clonenow.Row,
 	url, dest string) {
 	_ = total // total is reserved for a future "[i/N]" prefix; unused today
@@ -42,8 +52,13 @@ func printCloneNowTermBlockRow(index, total int, row clonenow.Row,
 		OriginalURL:  url,
 		TargetURL:    url,
 		Dest:         dest,
+		CmdBranch:    row.Branch, // executor uses row.Branch, NOT detected
 	})
 }
+
+// keep fmt referenced in this file for printCloneFromTermBlockRow's
+// --depth=N formatting (added below).
+var _ = fmt.Sprintf
 
 // printCloneFromTermBlockRow emits one RepoTermBlock for one
 // clone-from row. clone-from never rewrites URLs, so OriginalURL
