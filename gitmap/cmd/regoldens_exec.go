@@ -36,34 +36,11 @@ func runRegoldensPassCapture(cfg regoldensFlags, withGate bool, header string) i
 }
 
 // maybeEmitDiffSummary fires the post-pass-1 diff report when the
-// user passed --diff. Kept as a tiny shim to keep executeRegoldens
-// linear and readable.
+// user passed --diff=short|full. The mode is forwarded to the diff
+// emitter so it can pick the per-line and totals format.
 func maybeEmitDiffSummary(cfg regoldensFlags) {
-	if cfg.showDiff {
-		emitGoldenDiffSummary()
-	}
-}
-
-// emitGoldenDiffSummary runs git status to find changed golden files
-// and prints a concise summary to stderr.
-func emitGoldenDiffSummary() {
-	out, err := exec.Command("git", "status", "--porcelain").Output()
-	if err != nil {
-		return
-	}
-	lines := strings.Split(string(out), "\n")
-	var changed []string
-	for _, line := range lines {
-		if strings.Contains(line, ".golden") {
-			changed = append(changed, strings.TrimSpace(line[2:]))
-		}
-	}
-	if len(changed) > 0 {
-		fmt.Fprintln(os.Stderr, "\nChanged golden files:")
-		for _, f := range changed {
-			fmt.Fprintf(os.Stderr, "  %s\n", f)
-		}
-		fmt.Fprintln(os.Stderr)
+	if cfg.hasDiff() {
+		emitGoldenDiffSummary(cfg.diffMode)
 	}
 }
 
