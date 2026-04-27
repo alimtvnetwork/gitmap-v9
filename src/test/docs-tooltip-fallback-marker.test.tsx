@@ -80,3 +80,47 @@ describe("DocsTooltip — fallback wrapper marker", () => {
     expect(wrapper).toBeNull();
   });
 });
+
+// Fragments are a special shape: React.Children.count flattens
+// them, so a <>…</> with multiple inner nodes counts as >1 and
+// hits the fallback path, while a fragment wrapping a single
+// valid element collapses to 1 and is treated as a normal
+// element. Both branches must (a) keep aria-label OFF the
+// fallback wrapper and (b) place/omit the marker correctly.
+describe("DocsTooltip — fragment children", () => {
+  it("fragment with multiple children: marker present, no aria-label on wrapper", () => {
+    const { container } = renderWithProvider(
+      <DocsTooltip label="Hint">
+        <>
+          <span>a</span>
+          <span>b</span>
+        </>
+      </DocsTooltip>,
+    );
+    const wrapper = container.querySelector(`[${FALLBACK_ATTR}]`);
+    expect(wrapper).not.toBeNull();
+    expect(wrapper?.getAttribute(FALLBACK_ATTR)).toBe("true");
+    // The fallback wrapper must NEVER receive an aria-label —
+    // withAccessibleName explicitly skips the marked wrapper so
+    // we don't paper over a misuse with synthesized a11y data.
+    expect(wrapper?.hasAttribute("aria-label")).toBe(false);
+    // Inner spans were not cloned by withAccessibleName either.
+    const spans = wrapper?.querySelectorAll("span") ?? [];
+    spans.forEach((s) => expect(s.hasAttribute("aria-label")).toBe(false));
+  });
+
+  it("fragment wrapping a single valid element: no marker, aria-label injected on the inner element", () => {
+    const { container } = renderWithProvider(
+      <DocsTooltip label="Hint">
+        <>
+          <button type="button">Click</button>
+        </>
+      </DocsTooltip>,
+    );
+    const wrapper = container.querySelector(`[${FALLBACK_ATTR}]`);
+    expect(wrapper).toBeNull();
+    const button = container.querySelector("button");
+    expect(button).not.toBeNull();
+    expect(button?.getAttribute("aria-label")).toBe("Hint");
+  });
+});
