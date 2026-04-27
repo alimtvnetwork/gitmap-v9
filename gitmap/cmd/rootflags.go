@@ -157,6 +157,9 @@ type CloneFlags struct {
 	// VerifyCmdFaithful enables the dry-run argv-vs-displayed
 	// checker. See clonetermverify.go for behavior.
 	VerifyCmdFaithful bool
+	// PrintCloneArgv dumps the executor's literal argv tokens to
+	// stderr. See cloneprintargv.go for behavior.
+	PrintCloneArgv bool
 }
 
 // parseCloneFlags parses flags for the clone command.
@@ -180,6 +183,8 @@ func parseCloneFlags(args []string) CloneFlags {
 	outputFlag := fs.String(constants.FlagCloneTermOutput, "", constants.FlagDescCloneTermOutput)
 	verifyFlag := fs.Bool(constants.FlagCloneVerifyCmdFaithful, false,
 		constants.FlagDescCloneVerifyCmdFaithful)
+	printArgvFlag := fs.Bool(constants.FlagClonePrintArgv, false,
+		constants.FlagDescClonePrintArgv)
 	fs.Parse(args)
 
 	return CloneFlags{
@@ -197,6 +202,7 @@ func parseCloneFlags(args []string) CloneFlags {
 		MaxConcurrency:    *maxConcFlag,
 		Output:            *outputFlag,
 		VerifyCmdFaithful: *verifyFlag,
+		PrintCloneArgv:    *printArgvFlag,
 	}
 }
 

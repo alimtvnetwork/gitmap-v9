@@ -37,6 +37,7 @@ func runCloneNext(args []string) {
 	checkHelp("clone-next", args)
 	cnFlags := parseCloneNextFlags(args)
 	setCmdFaithfulVerify(cnFlags.VerifyCmdFaithful)
+	setCmdPrintArgv(cnFlags.PrintCloneArgv)
 
 	if cnFlags.Verbose {
 		log, err := verbose.Init()

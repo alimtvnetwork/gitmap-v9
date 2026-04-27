@@ -53,6 +53,8 @@ type CloneNextFlags struct {
 	Output string
 	// VerifyCmdFaithful enables the dry-run argv-vs-displayed checker.
 	VerifyCmdFaithful bool
+	// PrintCloneArgv dumps the executor argv to stderr.
+	PrintCloneArgv bool
 }
 
 // parseCloneNextFlags parses flags for the clone-next command.
@@ -84,6 +86,8 @@ func parseCloneNextFlags(args []string) CloneNextFlags {
 	outputFlag := fs.String(constants.FlagCloneNextOutput, "", constants.FlagDescCloneNextOutput)
 	verifyFlag := fs.Bool(constants.FlagCloneVerifyCmdFaithful, false,
 		constants.FlagDescCloneVerifyCmdFaithful)
+	printArgvFlag := fs.Bool(constants.FlagClonePrintArgv, false,
+		constants.FlagDescClonePrintArgv)
 	// Reorder so flags placed AFTER the positional version (e.g.
 	// `gitmap cn v+1 -f`) are still recognized. Go's stdlib flag
 	// parser stops at the first non-flag arg, so without this the
@@ -106,6 +110,7 @@ func parseCloneNextFlags(args []string) CloneNextFlags {
 		DryRun:            *dryRunFlag,
 		Output:            *outputFlag,
 		VerifyCmdFaithful: *verifyFlag,
+		PrintCloneArgv:    *printArgvFlag,
 	}
 	if fs.NArg() > 0 {
 		out.VersionArg = fs.Arg(0)

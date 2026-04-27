@@ -49,6 +49,7 @@ func runClone(args []string) {
 	}
 	initCloneVerbose(cf.Verbose)
 	setCmdFaithfulVerify(cf.VerifyCmdFaithful)
+	setCmdPrintArgv(cf.PrintCloneArgv)
 
 	// Audit short-circuits all execution paths. It must run BEFORE
 	// requireOnline / SSH key application so users can audit a manifest
