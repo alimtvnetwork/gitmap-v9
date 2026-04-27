@@ -14,7 +14,6 @@ package cmd
 import (
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
