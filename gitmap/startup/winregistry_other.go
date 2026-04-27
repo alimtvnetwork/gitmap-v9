@@ -38,6 +38,26 @@ func listWindowsRegistry() ([]Entry, error) {
 	return nil, nil
 }
 
+// addWindowsRegistryHKLM stub: machine-wide HKLM backend is
+// Windows-only. Returns the standard unsupported-OS error so
+// cross-platform callers get one consistent message.
+func addWindowsRegistryHKLM(_ string, _ AddOptions) (AddResult, error) {
+	return AddResult{}, fmt.Errorf(constants.ErrStartupUnsupportedOS)
+}
+
+// removeWindowsRegistryHKLM stub: unreachable on non-Windows.
+func removeWindowsRegistryHKLM(_ string, _ RemoveOptions) (RemoveResult, error) {
+	return RemoveResult{}, fmt.Errorf(constants.ErrStartupUnsupportedOS)
+}
+
+// listWindowsRegistryHKLM stub: returns nil entries (no error)
+// matching the HKCU listWindowsRegistry stub above so the
+// cross-OS list dispatcher gets identical empty-slice behavior
+// on Linux/macOS for both registry backends.
+func listWindowsRegistryHKLM() ([]Entry, error) {
+	return nil, nil
+}
+
 // trackingSubkeyExists stub: false on non-Windows so the .lnk
 // renderer's classify checks degrade gracefully if any code path
 // reaches them off-Windows.
