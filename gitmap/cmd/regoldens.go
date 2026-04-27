@@ -88,6 +88,8 @@ func bindRegoldensFlags(fs *flag.FlagSet, cfg *regoldensFlags) {
 		constants.FlagDescRegoldensDryRun)
 	fs.StringVar(&cfg.diffMode, constants.FlagRegoldensDiff, "",
 		constants.FlagDescRegoldensDiff)
+	fs.BoolVar(&cfg.determinism, constants.FlagRegoldensDeterminism, false,
+		constants.FlagDescRegoldensDeterminism)
 }
 
 // emitRegoldensDryRun prints both invocations without executing.
