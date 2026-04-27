@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v7/gitmap/goldenguard"
 )
 
 // canonicalReportResults builds a deterministic 3-row fixture that
@@ -102,7 +103,8 @@ func TestCloneFromReport_Golden_Canonical(t *testing.T) {
 func assertReportGolden(t *testing.T, name string, got []byte) {
 	t.Helper()
 	path := filepath.Join("testdata", name)
-	if os.Getenv("GITMAP_UPDATE_GOLDEN") == "1" {
+	trigger := os.Getenv("GITMAP_UPDATE_GOLDEN") == "1"
+	if goldenguard.AllowUpdate(t, trigger) {
 		writeReportGolden(t, path, got)
 
 		return
@@ -110,7 +112,8 @@ func assertReportGolden(t *testing.T, name string, got []byte) {
 	want, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read golden %s: %v "+
-			"(run with GITMAP_UPDATE_GOLDEN=1 to create)", path, err)
+			"(run with GITMAP_UPDATE_GOLDEN=1 and "+
+			"GITMAP_ALLOW_GOLDEN_UPDATE=1 to create)", path, err)
 	}
 	if !bytes.Equal(got, want) {
 		t.Fatalf("golden mismatch for %s\n"+

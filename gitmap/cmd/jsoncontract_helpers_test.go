@@ -31,6 +31,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/alimtvnetwork/gitmap-v7/gitmap/goldenguard"
 )
 
 // goldenDir is the conventional Go location for committed test
@@ -41,19 +43,23 @@ const goldenDir = "testdata"
 // assertGoldenBytes byte-compares `got` against the committed file
 // `testdata/<name>`. On mismatch it prints a unified-style diff so
 // the failure is actionable. To regenerate intentional fixture
-// changes, set GITMAP_UPDATE_GOLDEN=1 in the environment and re-run
-// the test — the file will be overwritten with `got`.
+// changes, set BOTH GITMAP_UPDATE_GOLDEN=1 AND the dedicated
+// GITMAP_ALLOW_GOLDEN_UPDATE=1 (see goldenguard) — the dual gate
+// keeps a single stray env var from rewriting fixtures in CI.
 func assertGoldenBytes(t *testing.T, name string, got []byte) {
 	t.Helper()
 	path := filepath.Join(goldenDir, name)
-	if os.Getenv("GITMAP_UPDATE_GOLDEN") == "1" {
+	trigger := os.Getenv("GITMAP_UPDATE_GOLDEN") == "1"
+	if goldenguard.AllowUpdate(t, trigger) {
 		mustWriteGolden(t, path, got)
 
 		return
 	}
 	want, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read golden %s: %v (run with GITMAP_UPDATE_GOLDEN=1 to create)", path, err)
+		t.Fatalf("read golden %s: %v "+
+			"(run with GITMAP_UPDATE_GOLDEN=1 and "+
+			"GITMAP_ALLOW_GOLDEN_UPDATE=1 to create)", path, err)
 	}
 	if !bytes.Equal(got, want) {
 		t.Fatalf("golden mismatch for %s\n--- want\n%s\n--- got\n%s",
@@ -71,7 +77,8 @@ func mustWriteGolden(t *testing.T, path string, got []byte) {
 	if err := os.WriteFile(path, got, 0o644); err != nil {
 		t.Fatalf("write golden %s: %v", path, err)
 	}
-	t.Fatalf("regenerated golden %s — re-run without GITMAP_UPDATE_GOLDEN to confirm", path)
+	t.Fatalf("regenerated golden %s — re-run without "+
+		"GITMAP_UPDATE_GOLDEN to confirm", path)
 }
 
 // assertObjectKeyOrder parses `raw` as a JSON object (or as the
