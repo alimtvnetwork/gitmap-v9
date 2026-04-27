@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/alimtvnetwork/gitmap-v7/gitmap/cloneconcurrency"
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/clonenow"
 	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
 )
@@ -50,6 +51,13 @@ type cloneNowFlags struct {
 	// printCloneArgv dumps the executor argv to stderr. Companion
 	// audit flag — see gitmap/cmd/cloneprintargv.go.
 	printCloneArgv bool
+	// maxConcurrency is the resolved worker-pool size (0 → auto via
+	// cloneconcurrency.Resolve at parse time, so by the time
+	// runCloneNow sees it the value is always >= 1). Increasing N
+	// preserves the on-disk hierarchy because every worker still
+	// uses each row's RelativePath verbatim — only progress-line
+	// timing changes.
+	maxConcurrency int
 }
 
 // runCloneNow is the dispatcher entry. checkHelp handles `--help`
@@ -104,6 +112,8 @@ func parseCloneNowFlags(args []string) cloneNowFlags {
 		constants.FlagDescCloneVerifyCmdFaithfulExitOnMismatch)
 	fs.BoolVar(&cfg.printCloneArgv, constants.FlagClonePrintArgv,
 		false, constants.FlagDescClonePrintArgv)
+	maxConcFlag := fs.Int(constants.CloneFlagMaxConcurrency,
+		constants.CloneDefaultMaxConcurrency, constants.FlagDescCloneMaxConcurrency)
 	reordered := reorderFlagsBeforeArgs(args)
 	fs.Parse(reordered)
 	if fs.NArg() < 1 {
@@ -111,6 +121,12 @@ func parseCloneNowFlags(args []string) cloneNowFlags {
 		os.Exit(2)
 	}
 	cfg.file = fs.Arg(0)
+	resolvedConc, ok := cloneconcurrency.Resolve(*maxConcFlag)
+	if !ok {
+		fmt.Fprintf(os.Stderr, constants.ErrCloneMaxConcurrencyInvalid, *maxConcFlag)
+		os.Exit(2)
+	}
+	cfg.maxConcurrency = resolvedConc
 	validateCloneNowFlags(cfg)
 
 	return cfg
