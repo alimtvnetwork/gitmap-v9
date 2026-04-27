@@ -1,20 +1,21 @@
 package startup
 
-// .lnk Startup folder backend. Unlike the registry backend, this
-// file compiles on every OS — it shells out to powershell.exe which
-// only exists on Windows, but the Go code itself uses no Windows-
-// only APIs. A runtime guard in addWindowsStartupFolder rejects
-// non-Windows callers with the unsupported-OS error before any
-// powershell invocation is attempted.
+// .lnk Startup folder backend. As of v3.176.0 this file uses an
+// in-process Shell Link writer (winshortcut_writer.go +
+// winshortcut_linkinfo.go) — no PowerShell shellout. The pure-Go
+// writer compiles on every OS, runs in microseconds (vs ~200ms for
+// powershell.exe), works on Server Core / restricted environments
+// without `powershell.exe` on PATH, and is unit-testable on Linux
+// CI without a Windows host.
 //
-// PowerShell shellout rationale (vs hand-rolling [MS-SHLLINK]):
-// the binary Shell Link format is ~80 pages of spec with multiple
-// optional sub-records (LinkInfo, IDList, ExtraData) that tools
-// like Explorer and `start` are picky about. Shipping a hand-rolled
-// writer untested by the developer is a regression risk; shelling
-// to `WScript.Shell.CreateShortcut` produces a .lnk that Windows
-// itself authored, guaranteeing format correctness. Trade-off:
-// powershell.exe must be on PATH (covered by ErrStartupPowerShellMissing).
+// A runtime guard in addWindowsStartupFolder still rejects non-
+// Windows callers with the unsupported-OS error before any file
+// I/O is attempted — same defensive posture as before.
+//
+// The legacy PowerShell helper (winshortcut_ps.go) is kept as a
+// fallback that's no longer reached on the normal Add path. We
+// retain it in case a future caller hits a target shape the
+// minimal writer can't represent (e.g. UNC paths, custom icons).
 //
 // Marker contract: the .lnk filename uses the `gitmap-` prefix,
 // AND a tracking subkey under HKCU\Software\Gitmap\StartupFolder\
@@ -69,7 +70,7 @@ func writeStartupShortcut(full, clean string, opts AddOptions) (AddResult, error
 
 		return AddResult{Status: AddExists, Path: full}, nil
 	}
-	if err := createShortcutViaPowerShell(full, opts.Exec); err != nil {
+	if err := writeShortcutFile(full, opts.Exec); err != nil {
 
 		return AddResult{}, fmt.Errorf(constants.ErrStartupShortcutCreate, full, err)
 	}
@@ -212,6 +213,8 @@ func fileExists(p string) bool {
 	return false
 }
 
-// PowerShell helpers (createShortcutViaPowerShell,
-// buildShortcutScript) live in winshortcut_ps.go to keep this file
-// under the per-file budget.
+// In-process .lnk writer (writeShortcutFile, buildShortcutBytes)
+// lives in winshortcut_writer.go and winshortcut_linkinfo.go.
+// Legacy PowerShell helper (createShortcutViaPowerShell,
+// buildShortcutScript) lives in winshortcut_ps.go — retained as a
+// fallback for future non-trivial target shapes.
