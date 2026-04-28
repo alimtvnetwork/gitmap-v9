@@ -46,10 +46,10 @@ func writeCloneFromReports(results []clonefrom.Result, cfg cloneFromFlags) (stri
 	sshCount := 0
 	httpsCount := 0
 	for _, r := range results {
-		if r.Mode == constants.ModeSSH {
-			sshCount++
-		} else if r.Mode == constants.ModeHTTPS {
+		if strings.HasPrefix(r.Row.URL, "https://") || strings.HasPrefix(r.Row.URL, "http://") {
 			httpsCount++
+		} else {
+			sshCount++
 		}
 	}
 
