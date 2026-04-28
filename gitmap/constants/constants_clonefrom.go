@@ -150,6 +150,23 @@ const (
 	ErrCloneFromReportMkdir = "clone-from: mkdir %s: %v"
 	// %s = file path, %v = err.
 	ErrCloneFromReportCreate = "clone-from: create report %s: %v"
+	// ErrCloneFromReportMissingFields is surfaced when one or more
+	// rows in the result set are missing a field required to
+	// produce a useful report (URL, Dest, or Status). Listing each
+	// offending row index keeps the message actionable: the user
+	// can correlate the index with the manifest or with the
+	// progress lines printed during Execute.
+	// %d = count of bad rows, %s = comma-separated row indices,
+	// %s = comma-separated missing-field summary per row.
+	ErrCloneFromReportMissingFields = "clone-from: refusing to write report -- " +
+		"%d row(s) missing required fields: rows=[%s] missing=[%s]"
+	// CloneFromReportFieldURL / Dest / Status are the canonical
+	// names the validator emits in the missing-field summary. Kept
+	// as constants so the integration test can assert against them
+	// without re-hardcoding the words.
+	CloneFromReportFieldURL    = "url"
+	CloneFromReportFieldDest   = "dest"
+	CloneFromReportFieldStatus = "status"
 	// MsgCloneFromMkdirParentFailFmt is the per-row Detail string set
 	// when MkdirAll on the dest's parent dir fails (permission,
 	// read-only FS). Single source of truth so the report column and
