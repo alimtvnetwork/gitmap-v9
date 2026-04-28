@@ -62,21 +62,36 @@ var knownScanFields = map[string]bool{
 
 // validateJSONSchema ensures the JSON input is an array of objects
 // whose keys are all known ScanRecord field names and where every
-// object carries at least one URL. Returns a clear error on the
-// first issue so users can fix the manifest one problem at a time.
+// object carries at least one URL. Two-stage decode (array first,
+// then per-element object) so a non-object element is reported with
+// its 1-based row number instead of a raw decoder offset that the
+// user has to hand-translate to a row.
 func validateJSONSchema(data []byte) error {
-	var raw []map[string]json.RawMessage
-	dec := json.NewDecoder(strings.NewReader(string(data)))
-	if err := dec.Decode(&raw); err != nil {
+	var elems []json.RawMessage
+	if err := json.Unmarshal(data, &elems); err != nil {
 		return fmt.Errorf(constants.ErrCloneNowJSONShape, err)
 	}
-	for i, obj := range raw {
-		if err := validateJSONRow(i, obj); err != nil {
+	for i, raw := range elems {
+		if err := validateJSONElement(i, raw); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// validateJSONElement decodes one array element as an object and
+// runs the per-row checks. A non-object element (string, number,
+// null, nested array) is reported with its 1-based index and the
+// observed JSON kind so the user can jump straight to the line.
+func validateJSONElement(i int, raw json.RawMessage) error {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return fmt.Errorf(constants.ErrCloneNowJSONRowNotObject,
+			i+1, jsonKind(raw))
+	}
+
+	return validateJSONRow(i, obj)
 }
 
 // validateJSONRow checks one decoded object: every key must be in
@@ -94,6 +109,33 @@ func validateJSONRow(i int, obj map[string]json.RawMessage) error {
 	}
 
 	return nil
+}
+
+// jsonKind returns a short human label for a RawMessage's top-level
+// JSON kind, used in error messages so users see "got string" rather
+// than a parser offset. Falls back to "invalid" for malformed bytes.
+func jsonKind(raw json.RawMessage) string {
+	s := strings.TrimSpace(string(raw))
+	if len(s) == 0 {
+		return "empty"
+	}
+	switch s[0] {
+	case '"':
+		return "string"
+	case '[':
+		return "array"
+	case '{':
+		return "object"
+	case 't', 'f':
+		return "boolean"
+	case 'n':
+		return "null"
+	}
+	if (s[0] >= '0' && s[0] <= '9') || s[0] == '-' {
+		return "number"
+	}
+
+	return "invalid"
 }
 
 // hasJSONURL reports whether the row carries a non-empty httpsUrl
