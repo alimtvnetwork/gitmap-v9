@@ -131,10 +131,6 @@ const (
 		"(expected https://, http://, ssh://, git://, file://, or scp-style host:path)"
 	// %d = bad depth.
 	ErrCloneFromNegDepth = "depth %d is negative"
-	// ErrCloneFromBadBranch + CSVColumn* constants live in
-	// constants_clonefrom_csvcolumns.go to keep this file under the
-	// 200-line per-file budget.
-
 
 	// CloneFromDepthFlagFmt is the SINGLE source of truth for how
 	// clone-from renders its shallow-clone flag, both in the executed
