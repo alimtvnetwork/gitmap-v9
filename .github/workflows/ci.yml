@@ -91,6 +91,21 @@ jobs:
         working-directory: gitmap
         run: go vet ./...
 
+      - name: Compile gate (typecheck every package + test files)
+        # Catches typecheck regressions (e.g. `r.Mode undefined`,
+        # `unknown field`, missing import) in BOTH production and
+        # _test.go files BEFORE the slower full test suite runs.
+        # `go test -run=^$ ./...` builds every test binary but
+        # executes zero tests, so it's the strictest, fastest
+        # compile signal we can get short of `go build ./...`
+        # (which skips _test.go files and would miss test-only
+        # typecheck errors). Exits non-zero on any build failure
+        # so the workflow fails immediately with a clear error
+        # message naming the offending file:line.
+        if: needs.sha-check.outputs.already-built != 'true'
+        working-directory: gitmap
+        run: go test -run=^$ ./... -count=1
+
       - name: golangci-lint
         if: needs.sha-check.outputs.already-built != 'true'
         uses: golangci/golangci-lint-action@v6
