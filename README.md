@@ -124,23 +124,9 @@ release metadata so the docs can never drift from the binary.
 
 ## Quick Start
 
-### Install — Quick (pick your install folder)
+### Install — Default (recommended)
 
-Prompts for the install drive/folder (press Enter for the default), then runs the full installer.
-
-#### Windows (PowerShell)
-
-```powershell
-irm https://raw.githubusercontent.com/alimtvnetwork/gitmap-v8/main/install-quick.ps1 | iex
-```
-
-#### Linux / macOS
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/gitmap-v8/main/install-quick.sh | bash
-```
-
-### Install — Full (defaults, no prompt)
+Runs the canonical installer with sensible defaults. **No prompts. No drive picker. Just installs.** This is what 99% of users want.
 
 #### Windows (PowerShell)
 
@@ -152,6 +138,22 @@ irm https://raw.githubusercontent.com/alimtvnetwork/gitmap-v8/main/gitmap/script
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/gitmap-v8/main/gitmap/scripts/install.sh | sh
+```
+
+### Install — Quick (pick your install drive)
+
+Use this **only** when you want to choose a specific drive or folder (e.g. install to `D:\` instead of the default location). It prompts for the install drive/folder, then delegates to the canonical installer above.
+
+#### Windows (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/alimtvnetwork/gitmap-v8/main/install-quick.ps1 | iex
+```
+
+#### Linux / macOS
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/alimtvnetwork/gitmap-v8/main/install-quick.sh | bash
 ```
 
 > **How install resolves a version:** every installer follows the generic contract in [`spec/07-generic-release/09-generic-install-script-behavior.md`](spec/07-generic-release/09-generic-install-script-behavior.md). In short — **strict tag mode** (`--version <tag>` / `-Version <tag>`) installs that exact release with **no fallback whatsoever** (no `latest`, no sibling probe, no main-branch HEAD; missing tag → exit 1). **Discovery mode** (no tag supplied) probes the next 20 `-v<N+i>` sibling repos in parallel, then falls back to `releases/latest`, and finally to the default branch HEAD as a last resort.
