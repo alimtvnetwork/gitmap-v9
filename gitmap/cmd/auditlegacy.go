@@ -26,10 +26,11 @@ type auditLegacyHit struct {
 
 // auditLegacyOpts holds parsed CLI flags.
 type auditLegacyOpts struct {
-	Patterns []*regexp.Regexp
-	Raw      []string
-	Root     string
-	AsJSON   bool
+	Patterns   []*regexp.Regexp
+	Raw        []string
+	Root       string
+	AsJSON     bool
+	ReportPath string // empty = no report file written
 }
 
 // runAuditLegacy is the dispatch entry point.
@@ -46,6 +47,7 @@ func runAuditLegacy(args []string) {
 		os.Exit(2)
 	}
 	emitAuditLegacy(opts, hits, n)
+	writeAuditLegacyReport(opts, hits, n)
 	if len(hits) > 0 {
 		os.Exit(1)
 	}
@@ -58,15 +60,47 @@ func parseAuditLegacyArgs(args []string) (auditLegacyOpts, error) {
 		constants.DefaultAuditLegacyPatterns, constants.FlagDescAuditLegacyPatterns)
 	root := fs.String(constants.FlagAuditLegacyPath, ".", constants.FlagDescAuditLegacyPath)
 	asJSON := fs.Bool(constants.FlagAuditLegacyJSON, false, constants.FlagDescAuditLegacyJSON)
+	report := fs.String(constants.FlagAuditLegacyReport, "",
+		constants.FlagDescAuditLegacyReport)
+	reportSet := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == constants.FlagAuditLegacyReport {
+			reportSet = true
+		}
+	})
 	if err := fs.Parse(args); err != nil {
 		return auditLegacyOpts{}, err
 	}
+	// Re-check after Parse so we know whether the user passed --report
+	// (with or without a value) versus omitting it entirely.
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == constants.FlagAuditLegacyReport {
+			reportSet = true
+		}
+	})
 	compiled, raw, err := compileAuditPatterns(*pats)
 	if err != nil {
 		return auditLegacyOpts{}, err
 	}
+	reportPath := resolveReportPath(reportSet, *report)
 
-	return auditLegacyOpts{Patterns: compiled, Raw: raw, Root: *root, AsJSON: *asJSON}, nil
+	return auditLegacyOpts{
+		Patterns: compiled, Raw: raw, Root: *root,
+		AsJSON: *asJSON, ReportPath: reportPath,
+	}, nil
+}
+
+// resolveReportPath returns "" when --report wasn't passed, the
+// default file when passed without a value, or the user's value.
+func resolveReportPath(set bool, value string) string {
+	if !set {
+		return ""
+	}
+	if value == "" {
+		return constants.DefaultAuditLegacyReport
+	}
+
+	return value
 }
 
 // compileAuditPatterns compiles a comma-separated pattern list.
