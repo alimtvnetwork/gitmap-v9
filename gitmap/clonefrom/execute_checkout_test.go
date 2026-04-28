@@ -62,7 +62,7 @@ func TestBuildGitArgs_NoCheckoutOnlyForSkipMode(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			args := BuildGitArgs(tc.row, "out")
+			args := buildGitArgs(tc.row, "out")
 			has := containsTok(args, constants.CloneFromNoCheckoutFlag)
 			if has != tc.wantFlag {
 				t.Fatalf("--no-checkout present=%v, want %v\n argv: %v",
