@@ -51,14 +51,14 @@ func writeCSVRows(cw *csv.Writer, records []model.ScanRecord) error {
 // writeCSVRow converts a single record to a CSV row. Depth is
 // rendered as a base-10 integer so it sorts numerically when the
 // CSV is opened in a spreadsheet. New columns (repoId,
-// discoveredUrl) are appended at the end so legacy positional
-// readers still resolve columns 0..9 unchanged.
+// discoveredUrl, transport) are appended at the end so legacy
+// positional readers still resolve columns 0..9 unchanged.
 func writeCSVRow(cw *csv.Writer, r model.ScanRecord) error {
 	row := []string{
 		r.RepoName, r.HTTPSUrl, r.SSHUrl, r.Branch, r.BranchSource,
 		r.RelativePath, r.AbsolutePath, r.CloneInstruction, r.Notes,
 		strconv.Itoa(r.Depth),
-		r.RepoID, r.DiscoveredURL,
+		r.RepoID, r.DiscoveredURL, r.Transport,
 	}
 
 	return cw.Write(row)
