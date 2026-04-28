@@ -7,6 +7,7 @@ package clonefrom
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
