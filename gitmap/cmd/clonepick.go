@@ -37,8 +37,7 @@ func runClonePick(args []string) {
 	setCmdPrintArgv(parsed.PrintCloneArgv)
 	plan, err := clonepick.ParseArgs(parsed.RawURL, parsed.RawPaths, parsed.Flags)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		cliexit.Fail(constants.CmdClonePick, "parse-args", parsed.RawURL, err, 2)
 	}
 
 	if plan.DryRun {
