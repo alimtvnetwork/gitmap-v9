@@ -65,6 +65,21 @@ file exists, `reclone` exits with code `2` and tells you to run
 `gitmap scan` first (or pass `--manifest` / a positional path).
 Auto-pickup never walks parent or sibling directories.
 
+## Pre-execute summary
+
+When `--execute` is passed, `reclone` prints a one-screen summary
+to stderr **before** any `git clone` runs (and before the safety
+prompt). It shows:
+
+- the resolved source manifest, format, mode, on-exists policy, and cwd
+- row totals: `N total (X new, Y already exist)` so you see the
+  blast radius at a glance
+- a sorted, indented tree of destination `RelativePath`s — capped
+  at 40 lines with an "... and N more" footer for big round-trips
+
+Pass `--no-summary` to suppress it (e.g. when a wrapper has already
+printed a richer dry-run preview).
+
 ## Safety prompt (existing destinations)
 
 Before any `git clone` runs under `--execute`, `reclone` checks
@@ -100,6 +115,7 @@ populated tree is impossible without explicit confirmation.
 | `--scan-root` | current dir | Directory whose `.gitmap/output/` is probed during auto-pickup. Lets you `reclone` a tree scanned elsewhere without `cd`. Ignored when `--manifest` or a positional `<file>` is given. |
 | `--execute` | off | Actually run `git clone`. Without this flag, only the dry-run plan is printed. |
 | `--yes` | off | Skip the pre-flight confirmation when destination folders already exist. **Required for non-interactive / CI runs** — without a TTY and without `--yes`, `reclone --execute` exits `2` rather than block on stdin. The `--on-exists` policy still applies per row. |
+| `--no-summary` | off | Suppress the pre-execute summary (totals + destination folder tree) printed before the safety prompt. Per-row results still print. |
 | `--quiet` | off | Suppress per-row progress lines. The end-of-batch summary still prints. |
 | `--mode` | `https` | URL mode to clone with: `https` or `ssh`. Falls back to the other mode if the preferred URL is missing on a row. |
 | `--format` | auto | Force input format: `json`, `csv`, or `text`. Default auto-detects from the file extension. |

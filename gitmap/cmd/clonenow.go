@@ -47,6 +47,11 @@ type cloneNowFlags struct {
 	// when any destination already exists; otherwise the run
 	// would block forever waiting on stdin.
 	assumeYes                       bool
+	// noSummary suppresses the pre-execute summary block printed
+	// by printRecloneExecuteSummary. Useful when a wrapper script
+	// already produced a dry-run preview and just wants the
+	// per-row results without re-printing the totals + tree.
+	noSummary                       bool
 	execute                         bool
 	quiet                           bool
 	mode                            string
@@ -83,6 +88,7 @@ func runCloneNow(args []string) {
 
 		return
 	}
+	printRecloneExecuteSummary(plan, cfg)
 	confirmCloneNowExistingDestsOrExit(plan, cfg)
 	runCloneNowExecute(plan, cfg)
 	maybeExitOnCmdFaithfulMismatch()
@@ -122,6 +128,8 @@ func parseCloneNowFlags(args []string) cloneNowFlags {
 		constants.FlagDescCloneNowScanRoot)
 	fs.BoolVar(&cfg.assumeYes, constants.FlagCloneNowYes, false,
 		constants.FlagDescCloneNowYes)
+	fs.BoolVar(&cfg.noSummary, constants.FlagCloneNowNoSummary, false,
+		constants.FlagDescCloneNowNoSummary)
 	maxConcFlag := fs.Int(constants.CloneFlagMaxConcurrency,
 		constants.CloneDefaultMaxConcurrency, constants.FlagDescCloneMaxConcurrency)
 	reordered := reorderFlagsBeforeArgs(args)

@@ -114,7 +114,21 @@ const (
 	FlagCloneNowYes     = "yes"
 	FlagDescCloneNowYes = "Skip the pre-flight confirmation when destination folders already exist " +
 		"(required for non-interactive / CI runs). The --on-exists policy still applies per row."
+	// FlagCloneNowNoSummary suppresses the pre-execute summary
+	// (totals + destination-folder tree) printed before the safety
+	// prompt. Useful for terse CI logs where the dry-run preview
+	// has already been printed in a previous step.
+	FlagCloneNowNoSummary     = "no-summary"
+	FlagDescCloneNowNoSummary = "Suppress the pre-execute summary " +
+		"(row totals + destination folder tree) shown before the safety prompt."
 )
+
+// CloneNowSummaryTreeLimit caps how many destination paths are
+// rendered in the folder-layout tree to keep terminal output
+// scannable on large round-trips. The total row count is always
+// shown in the header so the user knows the full impact.
+const CloneNowSummaryTreeLimit = 40
+
 // CloneNowConfirmYes is the only stdin response that proceeds with
 // --execute when destinations already exist. Anything else (including
 // the empty default) aborts with exit code 2. Stable so shell
@@ -204,6 +218,22 @@ const (
 	MsgCloneNowManifestConflict = "reclone: cannot combine positional <file> %q with --manifest %q; pass only one\n"
 	// %d = total existing dirs, %s = on-exists policy. Header
 	// printed before the bullet list of existing destinations.
+	// %s = source path, %s = format, %s = mode, %s = on-exists,
+	// %s = resolved cwd. Top banner of the pre-execute summary.
+	MsgCloneNowSummaryHeaderFmt = "\nreclone: pre-execute summary\n" +
+		"  source     : %s (%s)\n" +
+		"  mode       : %s\n" +
+		"  on-exists  : %s\n" +
+		"  cwd        : %s\n"
+	// %d = total rows, %d = new dirs, %d = existing dirs.
+	MsgCloneNowSummaryCountsFmt = "  rows       : %d total (%d new, %d already exist)\n"
+	// Section title for the destination folder tree.
+	MsgCloneNowSummaryTreeTitle = "  destinations:\n"
+	// %s = tree-formatted line (already includes the leading
+	// indent + branch glyph). One line per visible destination.
+	MsgCloneNowSummaryTreeLineFmt = "    %s\n"
+	// %d = number of dirs not shown.
+	MsgCloneNowSummaryTreeTruncFmt = "    ... and %d more\n"
 	MsgCloneNowConfirmHeader = "reclone: %d destination folder(s) already exist on disk " +
 		"(--on-exists=%s will be applied to each):\n"
 	// %s = relative path. One bullet per existing destination, up
