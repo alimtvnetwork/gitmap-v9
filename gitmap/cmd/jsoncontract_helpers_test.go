@@ -29,7 +29,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/goldenguard"
