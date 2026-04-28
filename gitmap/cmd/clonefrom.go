@@ -89,20 +89,8 @@ func runCloneFrom(args []string) {
 	runCloneFromExecute(plan, cfg)
 }
 
-// runCloneFromEmitSchema writes the requested JSON Schema to stdout
-// and exits. Unknown kinds print to stderr and exit 2 (CLI-usage
-// error class — same code as a missing positional argument).
-func runCloneFromEmitSchema(kind string) {
-	bytes, err := clonefrom.EmitSchema(kind)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
-	}
-	if _, err := os.Stdout.Write(bytes); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
+// runCloneFromEmitSchema lives in clonefrom_emitschema.go to keep
+// this file under the 200-line cap.
 
 // applyCheckoutDefault and validateCheckoutFlag live in
 // clonefrom_checkout.go to keep this file under the 200-line cap.
