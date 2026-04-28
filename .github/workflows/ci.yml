@@ -86,6 +86,25 @@ jobs:
           go-version-file: gitmap/go.mod
           cache-dependency-path: gitmap/go.sum
 
+      # Persist the Go build cache (GOCACHE) across runs so the
+      # compile gate and downstream `go test` invocations don't have
+      # to recompile every package from scratch on each push. setup-go
+      # already caches GOMODCACHE (~/go/pkg/mod) keyed by go.sum, but
+      # NOT ~/.cache/go-build — that's what makes the compile gate
+      # slow. We key by go.sum (toolchain/deps) + SHA (so each run
+      # saves its own entry) and fall back to any prior entry on the
+      # same go.sum via restore-keys, which is the standard pattern
+      # for warm Go build caches in CI.
+      - name: Cache Go build cache (GOCACHE)
+        if: needs.sha-check.outputs.already-built != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/go-build
+          key: go-build-${{ runner.os }}-lint-${{ hashFiles('gitmap/go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-build-${{ runner.os }}-lint-${{ hashFiles('gitmap/go.sum') }}-
+            go-build-${{ runner.os }}-lint-
+
       - name: Go vet
         if: needs.sha-check.outputs.already-built != 'true'
         working-directory: gitmap
