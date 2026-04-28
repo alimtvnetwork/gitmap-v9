@@ -66,6 +66,11 @@ type cloneFromFlags struct {
 func runCloneFrom(args []string) {
 	checkHelp("clone-from", args)
 	cfg := parseCloneFromFlags(args)
+	if cfg.emitSchema != "" {
+		runCloneFromEmitSchema(cfg.emitSchema)
+
+		return
+	}
 	setCmdFaithfulVerify(cfg.verifyCmdFaithful)
 	setCmdFaithfulExitOnMismatch(cfg.verifyCmdFaithfulExitOnMismatch)
 	setCmdPrintArgv(cfg.printCloneArgv)
@@ -82,6 +87,21 @@ func runCloneFrom(args []string) {
 		return
 	}
 	runCloneFromExecute(plan, cfg)
+}
+
+// runCloneFromEmitSchema writes the requested JSON Schema to stdout
+// and exits. Unknown kinds print to stderr and exit 2 (CLI-usage
+// error class — same code as a missing positional argument).
+func runCloneFromEmitSchema(kind string) {
+	bytes, err := clonefrom.EmitSchema(kind)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	if _, err := os.Stdout.Write(bytes); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
 
 // applyCheckoutDefault and validateCheckoutFlag live in
