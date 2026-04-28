@@ -18,11 +18,11 @@ import (
 
 // writeAuditLegacyReport renders a Markdown audit report to disk.
 // No-op when ReportPath is empty (the user didn't pass --report).
-func writeAuditLegacyReport(opts auditLegacyOpts, hits []auditLegacyHit, fileCount int) {
+func writeAuditLegacyReport(opts auditLegacyOpts, hits []auditLegacyHit, fileCount int, plans []auditDiffPlan) {
 	if opts.ReportPath == "" {
 		return
 	}
-	body := renderAuditMarkdown(opts, hits, fileCount)
+	body := renderAuditMarkdown(opts, hits, fileCount, plans)
 	if err := writeAuditReportFile(opts.ReportPath, body); err != nil {
 		fmt.Fprintf(os.Stderr, constants.ErrAuditLegacyReportWrite, opts.ReportPath, err)
 
@@ -43,11 +43,12 @@ func writeAuditReportFile(path, body string) error {
 }
 
 // renderAuditMarkdown builds the full report body.
-func renderAuditMarkdown(opts auditLegacyOpts, hits []auditLegacyHit, fileCount int) string {
+func renderAuditMarkdown(opts auditLegacyOpts, hits []auditLegacyHit, fileCount int, plans []auditDiffPlan) string {
 	var b strings.Builder
 	writeAuditMDHeader(&b, opts, hits, fileCount)
 	writeAuditMDPatternCounts(&b, opts, hits)
-	writeAuditMDFileCounts(&b, hits)
+	writeAuditMDFileCounts(&b, hits, plans)
+	writeAuditMDDiffArtifacts(&b, plans)
 	writeAuditMDHitList(&b, hits)
 
 	return b.String()
