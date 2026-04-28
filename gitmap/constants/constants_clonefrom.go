@@ -118,6 +118,11 @@ const (
 	ErrCloneFromCSVNoURL  = "clone-from: CSV header is missing required column 'url'"
 	// %d = row number including header, %v = err.
 	ErrCloneFromCSVRow = "clone-from: CSV row %d: %v"
+	// %d = row number including header, %s = column name, %v = err.
+	// Used when a row failure is attributable to a specific column so
+	// the operator can jump straight to the offending cell instead of
+	// re-reading the whole row to guess which field tripped validation.
+	ErrCloneFromCSVRowCol = "clone-from: CSV row %d, column %q: %v"
 	// %s = bad depth string.
 	ErrCloneFromBadDepth = "depth %q is not a valid integer"
 	ErrCloneFromEmptyURL = "url is empty after trim"
@@ -126,6 +131,21 @@ const (
 		"(expected https://, http://, ssh://, git://, file://, or scp-style host:path)"
 	// %d = bad depth.
 	ErrCloneFromNegDepth = "depth %d is negative"
+	// %s = bad branch value. A branch name with whitespace, a leading
+	// dash (would be parsed as a git flag), or NUL bytes is rejected
+	// at parse time so the failure surfaces with row/column context
+	// instead of as an opaque `git checkout` error mid-clone.
+	ErrCloneFromBadBranch = "branch %q is not a valid git ref name " +
+		"(must not be empty after trim, contain whitespace, " +
+		"start with '-', or contain control characters)"
+
+	// CSV column names — single source of truth for the names used
+	// in headers AND in row-error messages so the two cannot drift.
+	CSVColumnURL      = "url"
+	CSVColumnDest     = "dest"
+	CSVColumnBranch   = "branch"
+	CSVColumnDepth    = "depth"
+	CSVColumnCheckout = "checkout"
 
 	// CloneFromDepthFlagFmt is the SINGLE source of truth for how
 	// clone-from renders its shallow-clone flag, both in the executed
