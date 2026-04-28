@@ -114,7 +114,21 @@ const (
 	FlagCloneNowYes     = "yes"
 	FlagDescCloneNowYes = "Skip the pre-flight confirmation when destination folders already exist " +
 		"(required for non-interactive / CI runs). The --on-exists policy still applies per row."
+	// FlagCloneNowNoSummary suppresses the pre-execute summary
+	// (totals + destination-folder tree) printed before the safety
+	// prompt. Useful for terse CI logs where the dry-run preview
+	// has already been printed in a previous step.
+	FlagCloneNowNoSummary     = "no-summary"
+	FlagDescCloneNowNoSummary = "Suppress the pre-execute summary " +
+		"(row totals + destination folder tree) shown before the safety prompt."
 )
+
+// CloneNowSummaryTreeLimit caps how many destination paths are
+// rendered in the folder-layout tree to keep terminal output
+// scannable on large round-trips. The total row count is always
+// shown in the header so the user knows the full impact.
+const CloneNowSummaryTreeLimit = 40
+
 // CloneNowConfirmYes is the only stdin response that proceeds with
 // --execute when destinations already exist. Anything else (including
 // the empty default) aborts with exit code 2. Stable so shell
