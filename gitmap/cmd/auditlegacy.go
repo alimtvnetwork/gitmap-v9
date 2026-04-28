@@ -62,22 +62,20 @@ func parseAuditLegacyArgs(args []string) (auditLegacyOpts, error) {
 	asJSON := fs.Bool(constants.FlagAuditLegacyJSON, false, constants.FlagDescAuditLegacyJSON)
 	report := fs.String(constants.FlagAuditLegacyReport, "",
 		constants.FlagDescAuditLegacyReport)
+	if err := fs.Parse(args); err != nil {
+		return auditLegacyOpts{}, err
+	}
 	reportSet := false
 	fs.Visit(func(f *flag.Flag) {
 		if f.Name == constants.FlagAuditLegacyReport {
 			reportSet = true
 		}
 	})
-	if err := fs.Parse(args); err != nil {
+	compiled, raw, err := compileAuditPatterns(*pats)
+	if err != nil {
 		return auditLegacyOpts{}, err
 	}
-	// Re-check after Parse so we know whether the user passed --report
-	// (with or without a value) versus omitting it entirely.
-	fs.Visit(func(f *flag.Flag) {
-		if f.Name == constants.FlagAuditLegacyReport {
-			reportSet = true
-		}
-	})
+	reportPath := resolveReportPath(reportSet, *report)
 	compiled, raw, err := compileAuditPatterns(*pats)
 	if err != nil {
 		return auditLegacyOpts{}, err
