@@ -18,6 +18,7 @@ s
 | --mode ssh\|https | https | Clone URL style |
 | --output csv\|json\|terminal | terminal | Output format |
 | --output-path \<dir\> | ./.gitmap/output | Output directory |
+| --manifest \<dir\> | (alias) | Alias for `--output-path`; mirrors `gitmap reclone --manifest` so the scan→reclone round-trip uses one vocabulary. Honored only when `--output-path` is empty |
 | --github-desktop | false | Add repos to GitHub Desktop |
 | --open | false | Open output folder after scan |
 | --quiet | false | Suppress clone help section |
