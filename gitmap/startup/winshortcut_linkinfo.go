@@ -114,6 +114,15 @@ func computeLinkInfoOffsets(volumeID, pathBytes, suffixBytes []byte) (linkInfoOf
 
 // assembleLinkInfo writes the header + payload sections into a
 // single buffer. Pure formatting — no arithmetic, no error path.
+//
+// Example output for target "C:\\a.exe" (8 bytes + NUL = 9):
+//
+//	out[0:4]   = 0x39 0x00 0x00 0x00   // totalSize = 0x39
+//	out[4:8]   = 0x1C 0x00 0x00 0x00   // header size
+//	out[12:16] = 0x1C 0x00 0x00 0x00   // VolumeIDOffset
+//	out[16:20] = 0x2C 0x00 0x00 0x00   // LocalBasePathOffset
+//	out[0x2C:0x35] = "C:\\a.exe\x00"
+//	out[0x38]      = 0x00              // CommonPathSuffix
 func assembleLinkInfo(o linkInfoOffsets, volumeID, pathBytes, suffixBytes []byte) []byte {
 	le := binary.LittleEndian
 	out := make([]byte, o.totalSize)
