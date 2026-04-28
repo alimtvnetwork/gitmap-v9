@@ -69,6 +69,7 @@ path. Auto-pickup never walks parent directories.
 
 | Flag | Default | Description |
 |---|---|---|
+| `--manifest` | (none) | Explicit path to the scan artifact (`.json` or `.csv`). Equivalent to the positional `<file>` argument; cannot be combined with one. |
 | `--execute` | off | Actually run `git clone`. Without this flag, only the dry-run plan is printed. |
 | `--quiet` | off | Suppress per-row progress lines. The end-of-batch summary still prints. |
 | `--mode` | `https` | URL mode to clone with: `https` or `ssh`. Falls back to the other mode if the preferred URL is missing on a row. |
