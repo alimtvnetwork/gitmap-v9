@@ -1,4 +1,9 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "transport": {
+    "ssh": 0,
+    "https": 0,
+    "other": 0
+  },
   "rows": []
 }

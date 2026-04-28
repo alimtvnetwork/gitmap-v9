@@ -1,5 +1,10 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "transport": {
+    "ssh": 1,
+    "https": 2,
+    "other": 0
+  },
   "rows": [
     {
       "url": "https://github.com/acme/widget.git",
