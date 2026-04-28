@@ -226,6 +226,13 @@ const (
 	FlagDescOutput      = "Output format: terminal, csv, json"
 	FlagDescOutFile     = "Exact output file path"
 	FlagDescOutputPath  = "Output directory for CSV/JSON"
+	// FlagScanManifest is a unified alias for `--output-path` on the
+	// scan command, mirroring the same flag on `gitmap reclone` so
+	// the scan→reclone round-trip uses one vocabulary. Resolution:
+	// `--manifest` is honored only when `--output-path` is empty.
+	FlagScanManifest     = "manifest"
+	FlagDescScanManifest = "Alias for --output-path: directory where the scan " +
+		"manifest (JSON + CSV) is written. Used by `gitmap reclone --manifest`."
 	FlagDescTargetDir   = "Base directory for cloned repos"
 	FlagDescSafePull    = "If repo exists, run safe git pull with retries and unlock diagnostics"
 	FlagDescGHDesktop   = "Add discovered repos to GitHub Desktop"
