@@ -91,10 +91,11 @@ map as a single object. Every command flows from that idea.
 #### 🛠️ Self-managing installation
 - `gitmap self-install` / `self-uninstall` manage the binary itself
   on every supported platform.
-- Quick installers (`install-quick.ps1` / `install-quick.sh`) prompt
-  for an install drive, then handle PATH, data folder, and version
-  resolution — strict-tag mode for reproducible CI, parallel sibling
-  probe + `releases/latest` fallback for everyday use.
+- Canonical installers (`gitmap/scripts/install.ps1` /
+  `install.sh`) are the **default** one-liners — no prompts, sensible
+  defaults, full PATH + data-folder setup. Quick installers
+  (`install-quick.ps1` / `install-quick.sh`) layer a drive-picker
+  prompt on top for users who want to install on a specific drive.
 - `gitmap-updater` keeps the binary fresh; `self-uninstall` cleans
   up the PATH marker block and (optionally) the user data folder.
 
