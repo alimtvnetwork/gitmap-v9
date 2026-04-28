@@ -293,20 +293,47 @@ function Save-DeployPath([string]$dir) {
 }
 
 if ([string]::IsNullOrWhiteSpace($InstallDir)) {
-    $InstallDir = Read-InstallDir $DefaultDir
+    if ($Interactive) {
+        $InstallDir = Read-InstallDir $DefaultDir
+    } else {
+        $InstallDir = $DefaultDir
+        Write-Host "  [info] Using default install dir: $InstallDir (pass -Interactive to choose)" -ForegroundColor DarkGray
+    }
 }
 
 Write-Host ""
 Write-Host "  Installing gitmap to: $InstallDir" -ForegroundColor Green
+Write-Host "  Log file: $LogFile" -ForegroundColor DarkGray
 Write-Host ""
 
-Save-DeployPath $InstallDir
+Invoke-Safe -Step "Save deploy path ($InstallDir)" -Action { Save-DeployPath $InstallDir }
 
-$script = (Invoke-WebRequest -Uri $InstallerUrl -UseBasicParsing).Content
+$script = Invoke-Safe -Step "Download canonical installer ($InstallerUrl)" -Fatal -Action {
+    (Invoke-WebRequest -Uri $InstallerUrl -UseBasicParsing).Content
+}
 $block  = [ScriptBlock]::Create($script)
 
-if ($Version -ne "") {
-    & $block -InstallDir $InstallDir -Version $Version
+Invoke-Safe -Step "Run canonical install.ps1" -Action {
+    if ($Version -ne "") {
+        & $block -InstallDir $InstallDir -Version $Version
+    } else {
+        & $block -InstallDir $InstallDir
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Final summary
+# ---------------------------------------------------------------------------
+Write-Host ""
+if ($script:InstallErrors.Count -eq 0) {
+    Write-Host "  [OK] gitmap install-quick completed with no errors." -ForegroundColor Green
+    Write-Log  "install-quick.ps1 finished OK"
 } else {
-    & $block -InstallDir $InstallDir
+    Write-Host "  [SUMMARY] $($script:InstallErrors.Count) error(s) occurred during install:" -ForegroundColor Yellow
+    foreach ($e in $script:InstallErrors) {
+        Write-Host "    - $e" -ForegroundColor Red
+    }
+    Write-Host ""
+    Write-Host "  Full log written to: $LogFile" -ForegroundColor Yellow
+    Write-Log  "install-quick.ps1 finished with $($script:InstallErrors.Count) error(s)"
 }
