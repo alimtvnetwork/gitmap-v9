@@ -11,23 +11,13 @@ package clonenow
 // user is being told "feed me a scan artifact" and a typo in a key
 // name should produce a clear error, not silent data loss.
 //
-// This file adds two pre-flight checks that run BEFORE the tolerant
-// parsers and reject inputs whose shape doesn't match the documented
-// schema:
-//
-//   - validateJSONSchema -- input must be a JSON array of objects;
-//     every object key must be a known ScanRecord JSON tag; each
-//     row must carry at least one of httpsUrl / sshUrl.
-//   - validateCSVSchema  -- input must have a header row; every
-//     header name must be a known ScanRecord CSV tag; the header
-//     must include at least one of httpsUrl / sshUrl.
-//
-// Both checks return errors built from the constants in
-// constants_clonenow.go so messages stay greppable and stable.
+// This file owns the CSV half plus the shared known-fields registry.
+// The JSON half lives in parse_schema_json.go (split for the
+// 200-line per-file budget). Both halves return errors built from
+// the constants in constants_clonenow.go so messages stay greppable.
 
 import (
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
@@ -60,69 +50,12 @@ var knownScanFields = map[string]bool{
 	"transport":        true,
 }
 
-// validateJSONSchema ensures the JSON input is an array of objects
-// whose keys are all known ScanRecord field names and where every
-// object carries at least one URL. Returns a clear error on the
-// first issue so users can fix the manifest one problem at a time.
-func validateJSONSchema(data []byte) error {
-	var raw []map[string]json.RawMessage
-	dec := json.NewDecoder(strings.NewReader(string(data)))
-	if err := dec.Decode(&raw); err != nil {
-		return fmt.Errorf(constants.ErrCloneNowJSONShape, err)
-	}
-	for i, obj := range raw {
-		if err := validateJSONRow(i, obj); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// validateJSONRow checks one decoded object: every key must be in
-// knownScanFields and the row must carry at least one URL. The row
-// index is 1-based in the error so it matches what a human reading
-// the JSON file would count.
-func validateJSONRow(i int, obj map[string]json.RawMessage) error {
-	for k := range obj {
-		if !knownScanFields[k] {
-			return fmt.Errorf(constants.ErrCloneNowUnknownJSONField, i+1, k, knownFieldList())
-		}
-	}
-	if !hasJSONURL(obj) {
-		return fmt.Errorf(constants.ErrCloneNowMissingURL, i+1)
-	}
-
-	return nil
-}
-
-// hasJSONURL reports whether the row carries a non-empty httpsUrl
-// or sshUrl. Empty strings ("") count as missing -- the executor
-// would skip the row anyway, and a clear pre-flight error is more
-// useful than a silent drop.
-func hasJSONURL(obj map[string]json.RawMessage) bool {
-	return jsonStringNonEmpty(obj["httpsUrl"]) || jsonStringNonEmpty(obj["sshUrl"])
-}
-
-// jsonStringNonEmpty decodes a RawMessage as a string and reports
-// whether the result is non-empty. Non-string values are treated as
-// empty so a typo like `"httpsUrl": null` doesn't pass the URL gate.
-func jsonStringNonEmpty(raw json.RawMessage) bool {
-	if len(raw) == 0 {
-		return false
-	}
-	var s string
-	if err := json.Unmarshal(raw, &s); err != nil {
-		return false
-	}
-
-	return len(strings.TrimSpace(s)) > 0
-}
-
 // validateCSVSchema ensures the CSV input has a recognizable header
 // row whose every column is a known field and which includes at
-// least one of httpsUrl / sshUrl. Reads only the header line so the
-// caller can re-read the body afterwards.
+// least one of httpsUrl / sshUrl, AND that every data row carries a
+// non-empty URL. Per-row failures are reported with a 1-based DATA
+// row number (header is row 0; data row 1 = first row after header,
+// matching what a spreadsheet user sees as "row 2").
 func validateCSVSchema(r io.Reader) error {
 	cr := csv.NewReader(r)
 	cr.FieldsPerRecord = -1
@@ -133,8 +66,61 @@ func validateCSVSchema(r io.Reader) error {
 	if err != nil {
 		return fmt.Errorf(constants.ErrCloneNowCSVRead, err)
 	}
+	if err := validateCSVHeader(header); err != nil {
+		return err
+	}
 
-	return validateCSVHeader(header)
+	return validateCSVBody(cr, header)
+}
+
+// validateCSVBody streams the remaining CSV records (header already
+// consumed) and asserts each data row has a non-empty URL in either
+// httpsUrl or sshUrl. Field-count drift is intentionally NOT
+// enforced here — the header validator already tolerates trailing
+// empty columns, and uneven trailing emptiness is harmless. Stops
+// at the first row-level failure so users fix one issue at a time.
+func validateCSVBody(cr *csv.Reader, header []string) error {
+	urlIdxs := urlColumnIndexes(header)
+	for dataRow := 1; ; dataRow++ {
+		rec, err := cr.Read()
+		if err == io.EOF {
+
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf(constants.ErrCloneNowCSVRowRead, dataRow, err)
+		}
+		if !rowHasURL(rec, urlIdxs) {
+			return fmt.Errorf(constants.ErrCloneNowCSVRowMissingURL, dataRow)
+		}
+	}
+}
+
+// urlColumnIndexes returns the positions of the httpsUrl / sshUrl
+// columns in the (already validated) header. Empty slice cannot
+// occur because validateCSVHeader rejects headers without one.
+func urlColumnIndexes(header []string) []int {
+	out := make([]int, 0, 2)
+	for i, col := range header {
+		name := normalizeHeaderName(col)
+		if name == "httpsUrl" || name == "sshUrl" {
+			out = append(out, i)
+		}
+	}
+
+	return out
+}
+
+// rowHasURL reports whether at least one of the URL columns in this
+// data row holds a non-whitespace value.
+func rowHasURL(rec []string, urlIdxs []int) bool {
+	for _, i := range urlIdxs {
+		if i < len(rec) && len(strings.TrimSpace(rec[i])) > 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 // validateCSVHeader checks every header column against the known
