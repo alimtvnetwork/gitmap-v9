@@ -794,6 +794,59 @@ function Main {
     }
 }
 
+# --- Uninstall safety helpers ---
+
+# Confirm-IsGitmapInstall verifies the binary at $binPath actually
+# IS our gitmap CLI before any destructive action. We invoke
+# `<binary> version` and look for the literal token "gitmap" in the
+# output. A mismatch means the user pointed -InstallDir at the wrong
+# folder (or a stale path collides with another tool) — bail loudly
+# rather than rip PATH entries belonging to something else. -Force
+# overrides the guard for advanced users.
+function Confirm-IsGitmapInstall([string]$binPath, [bool]$isForce) {
+    if (-not (Test-Path $binPath)) {
+        # Nothing to verify against — also nothing to wreck. Allow
+        # PATH cleanup so a half-installed/broken state can be removed.
+        Write-Step "No binary at $binPath; skipping identity check."
+        return $true
+    }
+    try {
+        $out = (& $binPath version 2>&1 | Out-String)
+    }
+    catch {
+        $out = ""
+    }
+    if ($out -match '(?i)\bgitmap\b') {
+        Write-OK "Verified gitmap binary at $binPath."
+        return $true
+    }
+    if ($isForce) {
+        Write-Step "Identity check failed but -Force set; continuing."
+        return $true
+    }
+    Write-Err "Refusing to uninstall: $binPath does not look like gitmap."
+    Write-Err "  Output: $($out.Trim())"
+    Write-Err "  Re-run with -Force to override, or pass the correct -InstallDir."
+    return $false
+}
+
+# Resolve-DataChoice returns 'keep' or 'purge'. Honors -KeepData /
+# -PurgeData unconditionally; -Force defaults to 'keep' (safer);
+# otherwise prompts the user. When stdin is not interactive (e.g.
+# `iex` in a non-tty pipeline) we also default to 'keep'.
+function Resolve-DataChoice([string]$dataDir, [bool]$isKeep, [bool]$isPurge, [bool]$isForce) {
+    if (-not (Test-Path $dataDir)) { return 'keep' }
+    if ($isPurge) { return 'purge' }
+    if ($isKeep) { return 'keep' }
+    if ($isForce) { return 'keep' }
+    if (-not [Environment]::UserInteractive) { return 'keep' }
+    Write-Host ""
+    Write-Host ("  Data folder found: {0}" -f $dataDir) -ForegroundColor Yellow
+    $reply = Read-Host "  Delete user data too? [y/N]"
+    if ($reply -match '^(y|yes)$') { return 'purge' }
+    return 'keep'
+}
+
 # --- Uninstall mode ---
 if ($Uninstall) {
     Write-Host ""
@@ -802,6 +855,16 @@ if ($Uninstall) {
 
     $resolvedDir = Resolve-InstallDir $InstallDir
     $binPath = Join-Path $resolvedDir $BinaryName
+    $dataDir = Join-Path $resolvedDir "data"
+
+    # Safety guard: confirm this is actually gitmap before we touch
+    # PATH entries or delete anything. -Force bypasses the check.
+    if (-not (Confirm-IsGitmapInstall $binPath $Force.IsPresent)) {
+        Write-Host ""
+        return
+    }
+
+    $dataChoice = Resolve-DataChoice $dataDir $KeepData.IsPresent $PurgeData.IsPresent $Force.IsPresent
 
     # Remove PATH entries from all profiles
     $removedProfiles = Remove-FromPath $resolvedDir
@@ -815,6 +878,17 @@ if ($Uninstall) {
     $oldPath = "$binPath.old"
     if (Test-Path $oldPath) {
         Remove-Item $oldPath -Force -ErrorAction SilentlyContinue
+    }
+
+    # Honor the data-folder choice BEFORE the empty-dir sweep so a
+    # 'keep' run does not get the install dir removed out from under
+    # the surviving data folder.
+    if ($dataChoice -eq 'purge' -and (Test-Path $dataDir)) {
+        Remove-Item $dataDir -Recurse -Force -ErrorAction SilentlyContinue
+        Write-OK "Removed data folder: $dataDir"
+    }
+    elseif (Test-Path $dataDir) {
+        Write-Step "Kept data folder: $dataDir"
     }
 
     # Remove install dir if empty
@@ -836,6 +910,7 @@ if ($Uninstall) {
     Write-Host ""
     return
 }
+
 
 $installResult = Main
 
