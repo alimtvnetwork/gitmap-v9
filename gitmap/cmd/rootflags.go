@@ -75,8 +75,12 @@ func parseScanFlags(args []string) (dir, configPath, mode, output, outFile, outp
 	dir = resolveScanDir(fs)
 	probeOpts = resolveScanProbeOptions(fs, noProbeFlag, noProbeWaitFlag,
 		probeConcFlag, probeWorkersFlag, probeDepthFlag)
+	resolvedOutputPath := *outputPathFlag
+	if resolvedOutputPath == "" && *manifestFlag != "" {
+		resolvedOutputPath = *manifestFlag
+	}
 
-	return dir, *cfgFlag, *modeFlag, *outputFlag, *outFileFlag, *outputPathFlag, *relRootFlag, *defaultBranchFlag, *ghDesktopFlag, *openFlag, *quietFlag, *noVSCodeSyncFlag, *noAutoTagsFlag, *reportErrFlag, *workersFlag, *maxDepthFlag, probeOpts
+	return dir, *cfgFlag, *modeFlag, *outputFlag, *outFileFlag, resolvedOutputPath, *relRootFlag, *defaultBranchFlag, *ghDesktopFlag, *openFlag, *quietFlag, *noVSCodeSyncFlag, *noAutoTagsFlag, *reportErrFlag, *workersFlag, *maxDepthFlag, probeOpts
 }
 
 // resolveScanProbeOptions reconciles the deprecated --probe-concurrency
