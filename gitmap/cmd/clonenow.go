@@ -120,10 +120,16 @@ func parseCloneNowFlags(args []string) cloneNowFlags {
 	reordered := reorderFlagsBeforeArgs(args)
 	fs.Parse(reordered)
 	if fs.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, constants.MsgCloneNowMissingArg)
-		os.Exit(2)
+		picked, ok := autoPickupRecloneManifest()
+		if !ok {
+			fmt.Fprintln(os.Stderr, constants.MsgCloneNowMissingArg)
+			os.Exit(2)
+		}
+		fmt.Fprintf(os.Stderr, constants.MsgCloneNowAutoPickup, picked)
+		cfg.file = picked
+	} else {
+		cfg.file = fs.Arg(0)
 	}
-	cfg.file = fs.Arg(0)
 	resolvedConc, ok := cloneconcurrency.Resolve(*maxConcFlag)
 	if !ok {
 		fmt.Fprintf(os.Stderr, constants.ErrCloneMaxConcurrencyInvalid, *maxConcFlag)
