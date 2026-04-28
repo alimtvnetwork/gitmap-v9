@@ -35,7 +35,7 @@ import (
 var expectedScanCSVHeaders = []string{
 	"repoName", "httpsUrl", "sshUrl", "branch", "branchSource",
 	"relativePath", "absolutePath", "cloneInstruction", "notes", "depth",
-	"repoId", "discoveredUrl",
+	"repoId", "discoveredUrl", "transport",
 }
 
 // expectedLatestBranchCSVHeaders pins the latest-branch CSV layout.
