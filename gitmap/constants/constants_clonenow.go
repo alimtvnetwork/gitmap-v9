@@ -202,6 +202,25 @@ const (
 	// caller supplies BOTH forms — refusing is safer than silently
 	// preferring one and having the run consume the wrong artifact.
 	MsgCloneNowManifestConflict = "reclone: cannot combine positional <file> %q with --manifest %q; pass only one\n"
+	// %d = total existing dirs, %s = on-exists policy. Header
+	// printed before the bullet list of existing destinations.
+	MsgCloneNowConfirmHeader = "reclone: %d destination folder(s) already exist on disk " +
+		"(--on-exists=%s will be applied to each):\n"
+	// %s = relative path. One bullet per existing destination, up
+	// to CloneNowExistingPreviewLimit rows.
+	MsgCloneNowConfirmBullet = "  - %s\n"
+	// %d = number of dirs not shown.
+	MsgCloneNowConfirmTruncated = "  ... and %d more\n"
+	// Final prompt line. The trailing space (no newline) keeps the
+	// cursor on the prompt line for the user's response.
+	MsgCloneNowConfirmPrompt = "Proceed with `git clone` against these destinations? [y/N]: "
+	// Printed (stderr) when the user declines. Exit code follows.
+	MsgCloneNowConfirmAborted = "reclone: aborted by user; no clones were performed\n"
+	// Printed (stderr) when --execute lands in a non-TTY context
+	// with existing destinations and no --yes. Tells the user
+	// exactly which flag would unblock the run.
+	MsgCloneNowConfirmNonTTY = "reclone: refusing to proceed -- destinations already exist " +
+		"and stdin is not a TTY; pass --yes to confirm non-interactively\n"
 	MsgCloneNowNoURL = "no url for selected mode"
 	// Idempotency / re-clone messages. Each lands in Result.Detail
 	// so the per-row summary tells the user exactly which branch
