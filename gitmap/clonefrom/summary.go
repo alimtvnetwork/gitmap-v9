@@ -38,6 +38,9 @@ func RenderSummary(w io.Writer, results []Result, reportPath string) error {
 	if _, err := io.WriteString(w, header); err != nil {
 		return err
 	}
+	if err := writeTransportLine(w, results); err != nil {
+		return err
+	}
 	if len(reportPath) > 0 {
 		if _, err := fmt.Fprintf(w, "report: %s\n\n", reportPath); err != nil {
 			return err
