@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/clonefrom"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/clonefrom"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
 )
 
 // writeCloneFromReports persists the CSV report (always, unless

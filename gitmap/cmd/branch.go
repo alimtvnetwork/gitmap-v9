@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/gitutil"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/gitutil"
 )
 
 // runBranch dispatches `gitmap branch <subcommand>` (alias `b`).

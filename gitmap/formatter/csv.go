@@ -5,8 +5,8 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/model"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/model"
 )
 
 // WriteCSV writes records to the given writer in CSV format.

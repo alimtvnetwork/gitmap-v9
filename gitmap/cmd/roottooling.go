@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
 )
 
 // dispatchTooling routes dev tooling and maintenance commands.

@@ -23,8 +23,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/templates"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/templates"
 )
 
 // addTemplateFlags holds parsed flags shared by ignore + attributes.

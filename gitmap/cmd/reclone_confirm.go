@@ -25,8 +25,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/clonenow"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/clonenow"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
 )
 
 // confirmCloneNowExistingDestsOrExit gates the executor on a user

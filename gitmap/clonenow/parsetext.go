@@ -12,7 +12,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
 )
 
 // parseTextRows reads the scan-text artifact (one `git clone ...`

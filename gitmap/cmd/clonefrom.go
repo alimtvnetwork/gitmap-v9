@@ -22,9 +22,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/cloneconcurrency"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/clonefrom"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/cloneconcurrency"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/clonefrom"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
 )
 
 // cloneFromFlags holds parsed CLI inputs. Grouped in a struct

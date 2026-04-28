@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/model"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/store"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/model"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/store"
 )
 
 // writeAmendAudit writes the audit JSON file to .gitmap/amendments/.

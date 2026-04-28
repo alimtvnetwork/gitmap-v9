@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/cloner"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/model"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/store"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/verbose"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/cloner"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/model"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/store"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/verbose"
 )
 
 // pullOptions holds parsed pull flags.

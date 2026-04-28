@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/constants"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/fsutil"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/store"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/fsutil"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/store"
 )
 
 const updateRunScript = "run.ps1"

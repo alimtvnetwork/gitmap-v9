@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/mapper"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/scanner"
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/store"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/mapper"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/scanner"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/store"
 )
 
 // autoRegisterCurrentRepo registers the cwd as a Repo + ScanFolder so

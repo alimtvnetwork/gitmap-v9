@@ -32,7 +32,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alimtvnetwork/gitmap-v7/gitmap/goldenguard"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/goldenguard"
 )
 
 // goldenDir is the conventional Go location for committed test
