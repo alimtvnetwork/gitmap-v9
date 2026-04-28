@@ -113,10 +113,18 @@ func printExistingDestsPreview(existing []string, onExists string) {
 }
 
 // isStdinInteractive returns true when stdin is attached to a
-// terminal we can prompt against. Required so CI / piped runs don't
-// block forever on a Read that will never receive input.
+// character device (terminal). Required so CI / piped runs don't
+// block forever on a Read that will never receive input. Uses the
+// FileMode character-device bit instead of pulling in
+// golang.org/x/term as a direct dependency.
 func isStdinInteractive() bool {
-	return term.IsTerminal(int(os.Stdin.Fd()))
+	info, err := os.Stdin.Stat()
+	if err != nil {
+
+		return false
+	}
+
+	return (info.Mode() & os.ModeCharDevice) != 0
 }
 
 // readUserConfirmation prints the prompt to stderr and reads one
