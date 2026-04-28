@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"bufio"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -41,12 +40,12 @@ func runAuditLegacy(args []string) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	hits, fileCount, walkErr := scanAuditLegacy(opts)
+	hits, n, walkErr := scanAuditLegacy(opts)
 	if walkErr != nil {
 		fmt.Fprintf(os.Stderr, constants.ErrAuditLegacyWalk, opts.Root, walkErr)
 		os.Exit(2)
 	}
-	emitAuditLegacy(opts, hits, fileCount)
+	emitAuditLegacy(opts, hits, n)
 	if len(hits) > 0 {
 		os.Exit(1)
 	}
@@ -80,9 +79,9 @@ func compileAuditPatterns(csv string) ([]*regexp.Regexp, []string, error) {
 		if p == "" {
 			continue
 		}
-		re, err := regexp.Compile(p)
+		re, err := compileOnePattern(p)
 		if err != nil {
-			return nil, nil, fmt.Errorf(constants.ErrAuditLegacyRegex, p, err)
+			return nil, nil, err
 		}
 		out = append(out, re)
 		raw = append(raw, p)
@@ -91,31 +90,49 @@ func compileAuditPatterns(csv string) ([]*regexp.Regexp, []string, error) {
 	return out, raw, nil
 }
 
-// scanAuditLegacy walks the root and returns hits + scanned-file count.
-func scanAuditLegacy(opts auditLegacyOpts) ([]auditLegacyHit, int, error) {
-	var hits []auditLegacyHit
-	var fileCount int
-	walkErr := filepath.WalkDir(opts.Root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d == nil {
-			return nil
-		}
-		if d.IsDir() {
-			return skipAuditDir(d.Name())
-		}
-		if !isAuditScannable(path) {
-			return nil
-		}
-		fileCount++
-		fileHits := scanAuditLegacyFile(path, opts.Patterns)
-		hits = append(hits, fileHits...)
+// compileOnePattern wraps regexp.Compile with a standardized error.
+func compileOnePattern(p string) (*regexp.Regexp, error) {
+	re, err := regexp.Compile(p)
+	if err != nil {
+		return nil, fmt.Errorf(constants.ErrAuditLegacyRegex, p, err)
+	}
 
-		return nil
-	})
-
-	return hits, fileCount, walkErr
+	return re, nil
 }
 
-// skipAuditDir returns fs.SkipDir for ignored top-level directories.
+// scanAuditLegacy walks the root and returns hits + scanned-file count.
+func scanAuditLegacy(opts auditLegacyOpts) ([]auditLegacyHit, int, error) {
+	state := &auditWalkState{patterns: opts.Patterns}
+	walkErr := filepath.WalkDir(opts.Root, state.visit)
+
+	return state.hits, state.fileCount, walkErr
+}
+
+// auditWalkState accumulates results during filepath.WalkDir.
+type auditWalkState struct {
+	patterns  []*regexp.Regexp
+	hits      []auditLegacyHit
+	fileCount int
+}
+
+// visit is the WalkDir callback.
+func (s *auditWalkState) visit(path string, d fs.DirEntry, err error) error {
+	if err != nil || d == nil {
+		return nil
+	}
+	if d.IsDir() {
+		return skipAuditDir(d.Name())
+	}
+	if !isAuditScannable(path) {
+		return nil
+	}
+	s.fileCount++
+	s.hits = append(s.hits, scanAuditLegacyFile(path, s.patterns)...)
+
+	return nil
+}
+
+// skipAuditDir returns fs.SkipDir for ignored directories.
 func skipAuditDir(name string) error {
 	switch name {
 	case ".git", "node_modules", "dist", "build", "bin", ".next",
@@ -148,78 +165,34 @@ func scanAuditLegacyFile(path string, pats []*regexp.Regexp) []auditLegacyHit {
 		return nil
 	}
 	defer f.Close()
-	var hits []auditLegacyHit
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+	return collectAuditLineHits(path, scanner, pats)
+}
+
+// collectAuditLineHits iterates the scanner and gathers matches.
+func collectAuditLineHits(path string, scanner *bufio.Scanner, pats []*regexp.Regexp) []auditLegacyHit {
+	var hits []auditLegacyHit
 	lineNo := 0
 	for scanner.Scan() {
 		lineNo++
-		line := scanner.Text()
-		for _, re := range pats {
-			if re.MatchString(line) {
-				hits = append(hits, auditLegacyHit{
-					File: path, Line: lineNo, Pattern: re.String(), Text: line,
-				})
-			}
-		}
+		hits = append(hits, matchAuditLine(path, lineNo, scanner.Text(), pats)...)
 	}
 
 	return hits
 }
 
-// emitAuditLegacy prints results in JSON or human format.
-func emitAuditLegacy(opts auditLegacyOpts, hits []auditLegacyHit, fileCount int) {
-	if opts.AsJSON {
-		emitAuditLegacyJSON(opts, hits, fileCount)
-
-		return
-	}
-	emitAuditLegacyText(opts, hits, fileCount)
-}
-
-// emitAuditLegacyJSON prints a JSON report to stdout.
-func emitAuditLegacyJSON(opts auditLegacyOpts, hits []auditLegacyHit, fileCount int) {
-	report := map[string]any{
-		"root":           opts.Root,
-		"patterns":       opts.Raw,
-		"filesScanned":   fileCount,
-		"matchCount":     len(hits),
-		"matches":        hits,
-		"filesWithMatch": uniqueAuditFiles(hits),
-	}
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(report); err != nil {
-		fmt.Fprintf(os.Stderr, "audit-legacy: json encode failed: %v\n", err)
-	}
-}
-
-// emitAuditLegacyText prints a human-readable report.
-func emitAuditLegacyText(opts auditLegacyOpts, hits []auditLegacyHit, fileCount int) {
-	if len(hits) == 0 {
-		fmt.Fprintf(os.Stdout, constants.MsgAuditLegacyClean, opts.Root)
-
-		return
-	}
-	files := uniqueAuditFiles(hits)
-	fmt.Fprintf(os.Stdout, constants.MsgAuditLegacyHeader, len(hits), len(files), opts.Raw)
-	for _, h := range hits {
-		fmt.Fprintf(os.Stdout, constants.MsgAuditLegacyHit, h.File, h.Line, h.Text)
-	}
-	_ = fileCount
-}
-
-// uniqueAuditFiles returns the deduped file list for the report.
-func uniqueAuditFiles(hits []auditLegacyHit) []string {
-	seen := map[string]struct{}{}
-	out := make([]string, 0)
-	for _, h := range hits {
-		if _, ok := seen[h.File]; ok {
-			continue
+// matchAuditLine returns one hit per matching pattern on a single line.
+func matchAuditLine(path string, lineNo int, line string, pats []*regexp.Regexp) []auditLegacyHit {
+	var hits []auditLegacyHit
+	for _, re := range pats {
+		if re.MatchString(line) {
+			hits = append(hits, auditLegacyHit{
+				File: path, Line: lineNo, Pattern: re.String(), Text: line,
+			})
 		}
-		seen[h.File] = struct{}{}
-		out = append(out, h.File)
 	}
 
-	return out
+	return hits
 }
