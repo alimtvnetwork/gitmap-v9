@@ -17,7 +17,16 @@
 #>
 
 param(
-    [string]$InstallDir = ""
+    [string]$InstallDir = "",
+    # -Force: skip the gitmap identity guard AND skip the keep-data
+    #         prompt (defaults to keep). Use only when you know the
+    #         install dir is correct.
+    # -KeepData / -PurgeData: explicit data-folder choice; when both
+    #         are absent the user is prompted interactively (when a
+    #         tty is attached — non-interactive runs default to keep).
+    [switch]$Force,
+    [switch]$KeepData,
+    [switch]$PurgeData
 )
 
 $ErrorActionPreference = "Stop"
