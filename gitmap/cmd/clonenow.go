@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/cliexit"
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/cloneconcurrency"
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/clonenow"
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
@@ -79,8 +80,7 @@ func runCloneNow(args []string) {
 	setCmdPrintArgv(cfg.printCloneArgv)
 	plan, err := clonenow.ParseFile(cfg.file, cfg.format, cfg.mode, cfg.onExists)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		cliexit.Fail(constants.CmdCloneReclone, "parse-manifest", cfg.file, err, 1)
 	}
 	validateRecloneManifestOrExit(plan)
 	if !cfg.execute {
@@ -181,8 +181,7 @@ func runCloneNowDry(plan clonenow.Plan, cfg cloneNowFlags) {
 		return
 	}
 	if err := clonenow.Render(os.Stdout, plan); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		cliexit.Fail(constants.CmdCloneReclone, "render-dry-run", cfg.file, err, 1)
 	}
 }
 
@@ -219,7 +218,7 @@ func runCloneNowExecute(plan clonenow.Plan, cfg cloneNowFlags) {
 		results = clonenow.ExecuteWithHooks(plan, cfg.cwd, progress, hook)
 	}
 	if err := clonenow.RenderSummary(os.Stdout, results); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		cliexit.Reportf(constants.CmdCloneReclone, "render-summary", cfg.file, err)
 	}
 	os.Exit(cloneNowExitCode(results))
 }

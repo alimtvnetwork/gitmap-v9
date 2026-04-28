@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/cliexit"
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/clonefrom"
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
 )
@@ -74,8 +75,7 @@ func runCloneFrom(args []string) {
 	setCmdPrintArgv(cfg.printCloneArgv)
 	plan, err := clonefrom.ParseFile(cfg.file)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		cliexit.Fail(constants.CmdCloneFrom, "parse-manifest", cfg.file, err, 1)
 	}
 	applyCheckoutDefault(&plan, cfg.checkout)
 	if !cfg.execute {
@@ -105,8 +105,7 @@ func runCloneFrom(args []string) {
 func runCloneFromDry(plan clonefrom.Plan, cfg cloneFromFlags) {
 	render := pickCloneFromRenderer(cfg.output)
 	if err := render(os.Stdout, plan); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		cliexit.Fail(constants.CmdCloneFrom, "render-dry-run", cfg.file, err, 1)
 	}
 }
 
@@ -157,10 +156,10 @@ func runCloneFromExecute(plan clonefrom.Plan, cfg cloneFromFlags) {
 	csvPath, jsonPath := writeCloneFromReports(results, cfg)
 	if cfg.output == constants.OutputTerminal {
 		if err := clonefrom.RenderSummaryTerminal(os.Stdout, results, csvPath, jsonPath); err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			cliexit.Reportf(constants.CmdCloneFrom, "render-summary", csvPath, err)
 		}
 	} else if err := clonefrom.RenderSummary(os.Stdout, results, csvPath); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		cliexit.Reportf(constants.CmdCloneFrom, "render-summary", csvPath, err)
 	}
 	maybeExitOnCmdFaithfulMismatch()
 	os.Exit(cloneFromExitCode(results))

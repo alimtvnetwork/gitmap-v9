@@ -12,10 +12,11 @@ package cmd
 //       bucket as a missing <file> positional)
 
 import (
-	"fmt"
 	"os"
 
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/cliexit"
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/clonefrom"
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
 )
 
 // runCloneFromEmitSchema writes the requested JSON Schema to stdout
@@ -25,11 +26,9 @@ import (
 func runCloneFromEmitSchema(kind string) {
 	body, err := clonefrom.EmitSchema(kind)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		cliexit.Fail(constants.CmdCloneFrom, "emit-schema", kind, err, 2)
 	}
 	if _, err := os.Stdout.Write(body); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		cliexit.Fail(constants.CmdCloneFrom, "write-stdout", "emit-schema", err, 1)
 	}
 }

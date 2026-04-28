@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/alimtvnetwork/gitmap-v8/gitmap/cliexit"
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/clonepick"
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
 )
@@ -36,8 +37,7 @@ func runClonePick(args []string) {
 	setCmdPrintArgv(parsed.PrintCloneArgv)
 	plan, err := clonepick.ParseArgs(parsed.RawURL, parsed.RawPaths, parsed.Flags)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		cliexit.Fail(constants.CmdClonePick, "parse-args", parsed.RawURL, err, 2)
 	}
 
 	if plan.DryRun {
@@ -51,8 +51,7 @@ func runClonePick(args []string) {
 			return
 		}
 		if err := clonepick.Render(os.Stdout, plan); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			cliexit.Fail(constants.CmdClonePick, "render-dry-run", parsed.RawURL, err, 1)
 		}
 		maybeExitOnCmdFaithfulMismatch()
 
