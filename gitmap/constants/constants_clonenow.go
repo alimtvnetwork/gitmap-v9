@@ -104,7 +104,34 @@ const (
 	FlagDescCloneNowScanRoot = "Directory to auto-pickup the scan manifest from " +
 		"(probes <scan-root>/.gitmap/output/gitmap.{json,csv}). " +
 		"Defaults to the current directory. Ignored when --manifest or a positional <file> is given."
+	// FlagCloneNowYes bypasses the pre-flight existing-destinations
+	// confirmation prompt. The prompt only fires on --execute when
+	// at least one row's RelativePath already exists on disk; the
+	// per-row --on-exists policy still decides what actually happens
+	// to those existing dirs (skip / update / force). --yes is the
+	// scripting / CI escape hatch and is mandatory in non-TTY runs
+	// because there's no stdin to read a confirmation from.
+	FlagCloneNowYes     = "yes"
+	FlagDescCloneNowYes = "Skip the pre-flight confirmation when destination folders already exist " +
+		"(required for non-interactive / CI runs). The --on-exists policy still applies per row."
 )
+// CloneNowConfirmYes is the only stdin response that proceeds with
+// --execute when destinations already exist. Anything else (including
+// the empty default) aborts with exit code 2. Stable so shell
+// scripts piping `yes` keep working: `yes | gitmap reclone --execute`.
+const CloneNowConfirmYes = "y"
+
+// CloneNowExistingPreviewLimit caps how many existing destinations
+// are listed in the prompt to keep terminal output scannable. The
+// total count is always shown so the user knows the full impact.
+const CloneNowExistingPreviewLimit = 10
+
+// CloneNowExitConfirmAborted is the exit code used when the user
+// declines the prompt OR when --execute is passed in a non-TTY
+// context with existing destinations and no --yes. Distinct from
+// the per-row failure exit (1) so wrappers can tell "user said no"
+// apart from "git clone failed".
+const CloneNowExitConfirmAborted = 2
 
 // On-exists policy enum strings. Stable: surfaced in --on-exists,
 // the dry-run header, and the per-row Result.Detail field. Renaming
@@ -175,6 +202,25 @@ const (
 	// caller supplies BOTH forms — refusing is safer than silently
 	// preferring one and having the run consume the wrong artifact.
 	MsgCloneNowManifestConflict = "reclone: cannot combine positional <file> %q with --manifest %q; pass only one\n"
+	// %d = total existing dirs, %s = on-exists policy. Header
+	// printed before the bullet list of existing destinations.
+	MsgCloneNowConfirmHeader = "reclone: %d destination folder(s) already exist on disk " +
+		"(--on-exists=%s will be applied to each):\n"
+	// %s = relative path. One bullet per existing destination, up
+	// to CloneNowExistingPreviewLimit rows.
+	MsgCloneNowConfirmBullet = "  - %s\n"
+	// %d = number of dirs not shown.
+	MsgCloneNowConfirmTruncated = "  ... and %d more\n"
+	// Final prompt line. The trailing space (no newline) keeps the
+	// cursor on the prompt line for the user's response.
+	MsgCloneNowConfirmPrompt = "Proceed with `git clone` against these destinations? [y/N]: "
+	// Printed (stderr) when the user declines. Exit code follows.
+	MsgCloneNowConfirmAborted = "reclone: aborted by user; no clones were performed\n"
+	// Printed (stderr) when --execute lands in a non-TTY context
+	// with existing destinations and no --yes. Tells the user
+	// exactly which flag would unblock the run.
+	MsgCloneNowConfirmNonTTY = "reclone: refusing to proceed -- destinations already exist " +
+		"and stdin is not a TTY; pass --yes to confirm non-interactively\n"
 	MsgCloneNowNoURL = "no url for selected mode"
 	// Idempotency / re-clone messages. Each lands in Result.Detail
 	// so the per-row summary tells the user exactly which branch

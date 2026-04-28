@@ -42,13 +42,18 @@ type cloneNowFlags struct {
 	// the positional file is supplied; --scan-root only steers the
 	// auto-pickup branch so the CLI never has competing roots.
 	scanRoot string
-	execute  bool
-	quiet    bool
-	mode     string
-	format   string
-	cwd      string
-	onExists string
-	output   string
+	// assumeYes bypasses the pre-flight existing-destinations
+	// confirmation prompt. Required for non-TTY (CI) execution
+	// when any destination already exists; otherwise the run
+	// would block forever waiting on stdin.
+	assumeYes                       bool
+	execute                         bool
+	quiet                           bool
+	mode                            string
+	format                          string
+	cwd                             string
+	onExists                        string
+	output                          string
 	verifyCmdFaithful               bool
 	verifyCmdFaithfulExitOnMismatch bool
 	printCloneArgv                  bool
@@ -78,6 +83,7 @@ func runCloneNow(args []string) {
 
 		return
 	}
+	confirmCloneNowExistingDestsOrExit(plan, cfg)
 	runCloneNowExecute(plan, cfg)
 	maybeExitOnCmdFaithfulMismatch()
 }
@@ -114,6 +120,8 @@ func parseCloneNowFlags(args []string) cloneNowFlags {
 		constants.FlagDescCloneNowManifest)
 	fs.StringVar(&cfg.scanRoot, constants.FlagCloneNowScanRoot, "",
 		constants.FlagDescCloneNowScanRoot)
+	fs.BoolVar(&cfg.assumeYes, constants.FlagCloneNowYes, false,
+		constants.FlagDescCloneNowYes)
 	maxConcFlag := fs.Int(constants.CloneFlagMaxConcurrency,
 		constants.CloneDefaultMaxConcurrency, constants.FlagDescCloneMaxConcurrency)
 	reordered := reorderFlagsBeforeArgs(args)

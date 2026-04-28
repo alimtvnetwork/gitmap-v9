@@ -65,6 +65,27 @@ file exists, `reclone` exits with code `2` and tells you to run
 `gitmap scan` first (or pass `--manifest` / a positional path).
 Auto-pickup never walks parent or sibling directories.
 
+## Safety prompt (existing destinations)
+
+Before any `git clone` runs under `--execute`, `reclone` checks
+whether any planned `RelativePath` already exists under `--cwd`
+(default: current directory). If at least one does:
+
+- **Interactive TTY**: lists up to 10 existing destinations + total
+  count and prompts `Proceed with git clone against these
+  destinations? [y/N]:`. Only `y` proceeds; anything else aborts
+  with exit `2` and no side effects.
+- **Non-TTY** (CI, piped, redirected stdin): refuses with exit `2`
+  and tells you to pass `--yes`. There is no silent fallthrough —
+  you must opt in explicitly.
+- **`--yes` passed**: skips the prompt entirely.
+
+The per-row `--on-exists` policy (`skip` / `update` / `force`)
+still controls what actually happens to each existing directory;
+this gate is a single high-level confirmation that fires *before*
+any side effect, so an accidental `--on-exists force` against a
+populated tree is impossible without explicit confirmation.
+
 ## Arguments
 
 | Argument | Required | Description |
@@ -78,6 +99,7 @@ Auto-pickup never walks parent or sibling directories.
 | `--manifest` | (none) | Explicit path to the scan artifact (`.json` or `.csv`). Equivalent to the positional `<file>` argument; cannot be combined with one. |
 | `--scan-root` | current dir | Directory whose `.gitmap/output/` is probed during auto-pickup. Lets you `reclone` a tree scanned elsewhere without `cd`. Ignored when `--manifest` or a positional `<file>` is given. |
 | `--execute` | off | Actually run `git clone`. Without this flag, only the dry-run plan is printed. |
+| `--yes` | off | Skip the pre-flight confirmation when destination folders already exist. **Required for non-interactive / CI runs** — without a TTY and without `--yes`, `reclone --execute` exits `2` rather than block on stdin. The `--on-exists` policy still applies per row. |
 | `--quiet` | off | Suppress per-row progress lines. The end-of-batch summary still prints. |
 | `--mode` | `https` | URL mode to clone with: `https` or `ssh`. Falls back to the other mode if the preferred URL is missing on a row. |
 | `--format` | auto | Force input format: `json`, `csv`, or `text`. Default auto-detects from the file extension. |
@@ -111,4 +133,4 @@ gitmap reclone .gitmap/output/repos.json
 
 - `0` — dry-run completed, OR every row was ok/skipped on `--execute`.
 - `1` — file open / parse error, OR any row failed on `--execute`.
-- `2` — bad CLI usage (missing `<file>` or invalid flag value).
+- `2` — bad CLI usage (missing `<file>`, invalid flag value), OR the safety prompt was declined / refused (existing destinations + non-TTY without `--yes`).
