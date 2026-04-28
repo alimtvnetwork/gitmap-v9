@@ -9,7 +9,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/clonefrom"
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
@@ -41,29 +40,6 @@ func writeCloneFromReports(results []clonefrom.Result, cfg cloneFromFlags) (stri
 	} else {
 		fmt.Fprintln(os.Stderr, err)
 	}
-
-	// Print terminal summary
-	sshCount := 0
-	httpsCount := 0
-	for _, r := range results {
-		if strings.HasPrefix(r.Row.URL, "https://") || strings.HasPrefix(r.Row.URL, "http://") {
-			httpsCount++
-		} else {
-			sshCount++
-		}
-	}
-
-	fmt.Printf("\n--- Clone Summary ---\n")
-	fmt.Printf("Total Repos: %d\n", len(results))
-	fmt.Printf("SSH:         %d\n", sshCount)
-	fmt.Printf("HTTPS:       %d\n", httpsCount)
-	if csvPath != "" {
-		fmt.Printf("CSV Report:  %s\n", csvPath)
-	}
-	if jsonPath != "" {
-		fmt.Printf("JSON Report: %s\n", jsonPath)
-	}
-	fmt.Println()
 
 	return csvPath, jsonPath
 }
