@@ -1479,9 +1479,12 @@ main() {
         printf '  \033[90mApp folder on PATH: %s\033[0m\n' "${APP_DIR}" >&2
     fi
 
+    verify_installation "${bin_path}" "${APP_DIR}"
+
     echo ""
     ok "Done! Run 'gitmap --help' to get started."
     echo ""
 }
 
 main "$@"
+
