@@ -72,7 +72,7 @@ func collectExistingDests(plan clonenow.Plan, cwd string) []string {
 
 			continue
 		}
-		if pathExists(filepath.Join(base, r.RelativePath)) {
+		if destPathExists(filepath.Join(base, r.RelativePath)) {
 			out = append(out, r.RelativePath)
 		}
 	}
@@ -80,9 +80,9 @@ func collectExistingDests(plan clonenow.Plan, cwd string) []string {
 	return out
 }
 
-// pathExists treats any non-IsNotExist error as "exists" so a
+// destPathExists treats any non-IsNotExist error as "exists" so a
 // permission-denied parent can't sneak past the gate.
-func pathExists(p string) bool {
+func destPathExists(p string) bool {
 	_, err := os.Stat(p)
 	if err == nil {
 
