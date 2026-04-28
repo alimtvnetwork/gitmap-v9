@@ -17,12 +17,10 @@ package cmd
 // the first needs a different command.
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"os"
 
-	"github.com/alimtvnetwork/gitmap-v8/gitmap/cloneconcurrency"
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/clonefrom"
 	"github.com/alimtvnetwork/gitmap-v8/gitmap/constants"
 )
@@ -35,16 +33,14 @@ type cloneFromFlags struct {
 	execute  bool
 	quiet    bool
 	noReport bool
-	// output selects the per-row presentation: "" / "default" keep
-	// the legacy 4-line block; "terminal" renders the standardized
-	// branch/from/to/command block shared with scan, clone-next, probe.
-	output string
-	// checkout sets the GLOBAL default checkout mode. Empty string
-	// → falls back to constants.CloneFromCheckoutDefault. Per-row
-	// `checkout` field always wins. Validated up-front so a typo
-	// fails before any clone runs.
-	checkout string
-	// verifyCmdFaithful enables the dry-run argv-vs-displayed checker.
+	// emitSchema, when non-empty, short-circuits the command: the
+	// requested JSON Schema (kind = "report" | "input") is written
+	// to stdout and the process exits 0. No <file> argument is
+	// required in this mode — useful for CI tooling that wants to
+	// validate exported manifests without running a clone first.
+	emitSchema        string
+	output            string
+	checkout          string
 	verifyCmdFaithful bool
 	// verifyCmdFaithfulExitOnMismatch upgrades the verifier into a
 	// hard failure: any divergence sets a sticky bit and the run tail
@@ -68,6 +64,11 @@ type cloneFromFlags struct {
 func runCloneFrom(args []string) {
 	checkHelp("clone-from", args)
 	cfg := parseCloneFromFlags(args)
+	if cfg.emitSchema != "" {
+		runCloneFromEmitSchema(cfg.emitSchema)
+
+		return
+	}
 	setCmdFaithfulVerify(cfg.verifyCmdFaithful)
 	setCmdFaithfulExitOnMismatch(cfg.verifyCmdFaithfulExitOnMismatch)
 	setCmdPrintArgv(cfg.printCloneArgv)
@@ -86,52 +87,14 @@ func runCloneFrom(args []string) {
 	runCloneFromExecute(plan, cfg)
 }
 
+// runCloneFromEmitSchema lives in clonefrom_emitschema.go to keep
+// this file under the 200-line cap.
+
 // applyCheckoutDefault and validateCheckoutFlag live in
 // clonefrom_checkout.go to keep this file under the 200-line cap.
 
-// parseCloneFromFlags wires flags + extracts the positional file
-// argument. Exits 2 with a clear message when <file> is missing —
-// failing fast here is friendlier than parsing later and reporting
-// "open : no such file or directory".
-func parseCloneFromFlags(args []string) cloneFromFlags {
-	var cfg cloneFromFlags
-	fs := flag.NewFlagSet("clone-from", flag.ExitOnError)
-	fs.BoolVar(&cfg.execute, constants.FlagCloneFromExecute, false,
-		constants.FlagDescCloneFromExecute)
-	fs.BoolVar(&cfg.quiet, constants.FlagCloneFromQuiet, false,
-		constants.FlagDescCloneFromQuiet)
-	fs.BoolVar(&cfg.noReport, constants.FlagCloneFromNoReport, false,
-		constants.FlagDescCloneFromNoReport)
-	fs.StringVar(&cfg.output, constants.FlagCloneFromOutput, "",
-		constants.FlagDescCloneFromOutput)
-	fs.BoolVar(&cfg.verifyCmdFaithful, constants.FlagCloneVerifyCmdFaithful,
-		false, constants.FlagDescCloneVerifyCmdFaithful)
-	fs.BoolVar(&cfg.verifyCmdFaithfulExitOnMismatch,
-		constants.FlagCloneVerifyCmdFaithfulExitOnMismatch, false,
-		constants.FlagDescCloneVerifyCmdFaithfulExitOnMismatch)
-	fs.BoolVar(&cfg.printCloneArgv, constants.FlagClonePrintArgv,
-		false, constants.FlagDescClonePrintArgv)
-	fs.StringVar(&cfg.checkout, constants.FlagCloneFromCheckout, "",
-		constants.FlagDescCloneFromCheckout)
-	maxConcFlag := fs.Int(constants.CloneFlagMaxConcurrency,
-		constants.CloneDefaultMaxConcurrency, constants.FlagDescCloneMaxConcurrency)
-	reordered := reorderFlagsBeforeArgs(args)
-	fs.Parse(reordered)
-	if fs.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, constants.MsgCloneFromMissingArg)
-		os.Exit(2)
-	}
-	validateCheckoutFlag(cfg.checkout)
-	resolvedConc, ok := cloneconcurrency.Resolve(*maxConcFlag)
-	if !ok {
-		fmt.Fprintf(os.Stderr, constants.ErrCloneMaxConcurrencyInvalid, *maxConcFlag)
-		os.Exit(2)
-	}
-	cfg.maxConcurrency = resolvedConc
-	cfg.file = fs.Arg(0)
-
-	return cfg
-}
+// parseCloneFromFlags lives in clonefrom_flags.go to keep this file
+// under the 200-line cap (mem://style/code-constraints, item 3).
 
 // validateCheckoutFlag lives in clonefrom_checkout.go.
 
