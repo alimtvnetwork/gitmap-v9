@@ -273,7 +273,7 @@ mkdir -p "$CASE"
 # Hand-craft a report with one path-less entry (Filename: "").
 jq -n '{Issues: [
   {FromLinter: "unused", Text: "phantom", Pos: {Filename: "", Line: 0, Column: 0}}
-]}' > "$CASE/current.json"
+]}' > "$CASE/fixture.json"
 make_report "$CASE/baseline.json"
 export LINTER="unused" \
        BASELINE="$CASE/baseline.json" \
