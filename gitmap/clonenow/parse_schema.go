@@ -59,6 +59,7 @@ var knownScanFields = map[string]bool{
 func validateCSVSchema(r io.Reader) error {
 	cr := csv.NewReader(r)
 	cr.FieldsPerRecord = -1
+	cr.LazyQuotes = true
 	header, err := cr.Read()
 	if err == io.EOF {
 		return fmt.Errorf(constants.ErrCloneNowEmptyCSV)

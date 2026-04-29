@@ -194,13 +194,51 @@ func dedupeLines(body []byte) []byte {
 			continue
 		}
 		if _, dup := seen[trimmed]; dup {
+			// Keep position as a blank so visual spacing between
+			// retained sections is preserved instead of collapsing.
+			out = append(out, "")
+
 			continue
 		}
 		seen[trimmed] = struct{}{}
 		out = append(out, line)
 	}
+	// Collapse runs of 3+ blank lines down to 2 — two blanks is the
+	// widest separator we ever want to render after dedupe.
+	out = collapseBlankRuns(out, 2)
 
 	return []byte(strings.Join(out, "\n"))
+}
+
+// collapseBlankRuns trims any INTERIOR run of blank lines longer than
+// maxBlank down to exactly maxBlank consecutive blanks. A run that
+// extends to the end of the slice is preserved as-is so trailing
+// spacing introduced by dedup'd duplicates survives untouched.
+func collapseBlankRuns(lines []string, maxBlank int) []string {
+	// Find the index of the last non-blank line. Anything after it is
+	// the trailing run and is left alone.
+	lastNonBlank := -1
+	for i, line := range lines {
+		if strings.TrimSpace(line) != "" {
+			lastNonBlank = i
+		}
+	}
+	out := make([]string, 0, len(lines))
+	run := 0
+	for i, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			run++
+			if i > lastNonBlank || run <= maxBlank {
+				out = append(out, line)
+			}
+
+			continue
+		}
+		run = 0
+		out = append(out, line)
+	}
+
+	return out
 }
 
 // buildAddTag turns a language list into a stable, sorted tag suffix so

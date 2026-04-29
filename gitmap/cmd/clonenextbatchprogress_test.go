@@ -49,11 +49,11 @@ func TestBatchProgressReporter_IgnoresUnknownStatus(t *testing.T) {
 // the no-print branch doesn't panic. The format-string verb count
 // is independently covered by go vet in CI.
 func TestBatchProgressReporter_FormatHasSixVerbs(t *testing.T) {
-	// The format string has six %d verbs and one %s per repo:
+	// The format string has five %d verbs and two %s per repo:
 	//   "[%d/%d] %s — %s (ok=%d failed=%d skipped=%d)"
 	// Manual verb count guards against accidental drift in the
 	// constant since go vet only catches mismatches at call sites.
-	const wantVerbs = 6 // %d count
+	const wantVerbs = 5 // %d count
 	got := strings.Count(constants.MsgCloneNextBatchProgressFmt, "%d")
 	if got != wantVerbs {
 		t.Fatalf("MsgCloneNextBatchProgressFmt: got %d %%d verbs, want %d",
