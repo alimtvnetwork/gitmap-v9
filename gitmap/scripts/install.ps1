@@ -355,7 +355,7 @@ function Resolve-Version([string]$version) {
     }
 }
 
-# --- Strict-tag failure (spec/07-generic-release/09 §3) ---
+# --- Strict-tag failure (spec/07-generic-release/09 section 3) ---
 # Print the canonical no-fallback message and exit 1. Called from
 # Get-Asset whenever -Version was supplied explicitly and the
 # requested release asset cannot be downloaded or verified.
@@ -704,7 +704,7 @@ public static class GitMapEnvNative {
 function Add-ToPath([string]$dir) {
     $modified = @()
 
-    # --- 1. Windows User PATH (registry) — covers CMD + new PowerShell windows ---
+    # --- 1. Windows User PATH (registry) -- covers CMD + new PowerShell windows ---
     $currentUserPath = [Environment]::GetEnvironmentVariable("PATH", "User")
     $userHasDir = Test-PathEntry $currentUserPath $dir
 
@@ -725,7 +725,7 @@ function Add-ToPath([string]$dir) {
         Write-Step "Already in User PATH (registry)."
     }
 
-    # --- 2. PowerShell $PROFILE — ensures PATH in all PowerShell sessions ---
+    # --- 2. PowerShell $PROFILE -- ensures PATH in all PowerShell sessions ---
     $psProfilePath = $PROFILE
     if ($psProfilePath) {
         $exportLine = "`$env:PATH = `"$dir;`$env:PATH`""
@@ -1008,12 +1008,12 @@ function Main {
 # IS our gitmap CLI before any destructive action. We invoke
 # `<binary> version` and look for the literal token "gitmap" in the
 # output. A mismatch means the user pointed -InstallDir at the wrong
-# folder (or a stale path collides with another tool) — bail loudly
+# folder (or a stale path collides with another tool) -- bail loudly
 # rather than rip PATH entries belonging to something else. -Force
 # overrides the guard for advanced users.
 function Confirm-IsGitmapInstall([string]$binPath, [bool]$isForce) {
     if (-not (Test-Path $binPath)) {
-        # Nothing to verify against — also nothing to wreck. Allow
+        # Nothing to verify against -- also nothing to wreck. Allow
         # PATH cleanup so a half-installed/broken state can be removed.
         Write-Step "No binary at $binPath; skipping identity check."
         return $true
