@@ -56,7 +56,7 @@
 
 - **Pin every tool**: `goimports@v0.24.0`, `golangci-lint@v1.64.8`. Never `@latest` in CI.
 - **Compute `-local` from `go.mod`**: avoids hardcoding the module path in CI.
-- **Don't conflate floor vs diff**: `lint-regression-guard` is misleadingly named — half the linters it covers use a hard-floor (no baseline), half use baseline-diff. Either rename or unify before adding new linters to it.
+- **Don't conflate floor vs diff**: Resolved 2026-04-29 — job renamed `lint-regression-guard` → `lint-hard-floor`, with the misleading umbrella label dropped and per-step model documented inline. The misspell/gocritic/exhaustive baseline-diff sub-steps stay co-located for cache-key locality.
 
 ## Next AI Pickup Point
 
