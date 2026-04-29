@@ -454,7 +454,7 @@ function Install-Binary([string]$zipPath, [string]$installDir) {
                 Write-Err "  $file"
             }
         }
-        exit 1
+        throw [InstallerFailure]::new("Installed archive did not contain $BinaryName", 1)
     }
 
     Move-Item $extracted.FullName $targetPath -Force
@@ -463,7 +463,7 @@ function Install-Binary([string]$zipPath, [string]$installDir) {
 
     if (-not (Test-Path $targetPath)) {
         Write-Err "Install failed: $BinaryName was not written to $installDir"
-        exit 1
+        throw [InstallerFailure]::new("Install failed: $BinaryName was not written to $installDir", 1)
     }
 
     # Cleanup .old
