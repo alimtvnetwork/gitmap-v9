@@ -266,7 +266,7 @@ jobs:
             golangci-misspell-baseline-main-
 
       - name: Misspell diff (hard-gate, full-path only)
-        # Dedicated misspell-only diff. Runs after the regression guard
+        # Dedicated misspell-only diff. Runs after the hard-floor step
         # so a misspell regression is reported with a guaranteed
         # `path:line:col` annotation and CANNOT be masked by stale
         # path-less errors (e.g. typecheck `r.Mode undefined`) leaking
