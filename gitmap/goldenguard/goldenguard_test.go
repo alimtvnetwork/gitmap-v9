@@ -65,35 +65,19 @@ func TestAllowUpdate_TriggerOnAllowWrongValue_Fails(t *testing.T) {
 	}
 }
 
-// expectFatal runs AllowUpdate(_, trigger) inside a sub-test launched
-// in a goroutine and reports whether AllowUpdate triggered Fatalf.
+// expectFatal runs AllowUpdate(_, trigger) inside a sub-test and
+// reports whether AllowUpdate marked that sub-test as failed. Idiomatic
+// pattern for asserting that a helper calls t.Errorf/t.Fatalf without
+// aborting the outer test.
 //
-// t.Fatalf calls runtime.Goexit, which unwinds the goroutine without
-// running any further statements in the closure. We detect that by
-// deferring a channel send carrying a "completed" flag: if the post-
-// call assignment ran, Fatalf did NOT fire; if Goexit unwound first,
-// the flag is still false.
-//
-// The sub-test runs inside parent.Run, which marks the parent failed
-// when the child fails. We compensate by clearing the parent's
-// expected-failure marker via a sentinel sub-test name and reading
-// only our own channel result.
+// AllowUpdate uses t.Errorf (not Fatalf) on the gate-failure path, so
+// the sub-test goroutine completes normally and child.Failed() reflects
+// the failure. parent.Run returns false in that case, which we invert.
 func expectFatal(parent *testing.T, trigger bool) bool {
 	parent.Helper()
-	done := make(chan bool, 1)
-	// Run in a sub-test we expect to fail. We swallow the failure by
-	// inspecting only the channel, never the sub-test's Failed state.
-	parent.Run("probe", func(probe *testing.T) {
-		go func() {
-			var completed bool
-			defer func() { done <- completed }()
-			_ = AllowUpdate(probe, trigger)
-			completed = true
-		}()
-		<-done
-		// Re-emit so the outer caller can read it.
-		done <- !probe.Failed() && trigger
+	passed := parent.Run("expect-fatal", func(child *testing.T) {
+		_ = AllowUpdate(child, trigger)
 	})
 
-	return !<-done
+	return !passed
 }
