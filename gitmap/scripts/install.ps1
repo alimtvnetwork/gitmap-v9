@@ -49,11 +49,34 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-# Force UTF-8 output so glyphs like the warning sign render correctly
-# instead of cp437/Windows-1252 mojibake (e.g. "ΓÜá" for "⚠").
+# Force UTF-8 console I/O so non-ASCII glyphs (warning signs, arrows, box-
+# drawing chars) and any future localized strings render correctly instead
+# of cp437/Windows-1252 mojibake. Also defensive for `irm | iex`, where the
+# active console code page may still be 437/1252 even though the script
+# body is decoded as UTF-8 by Invoke-RestMethod.
+#
+# Order:
+#   1. Flip the OS console code page to UTF-8 (65001) via Win32 so conhost
+#      stops transcoding our bytes.
+#   2. Set .NET stdout/stderr/stdin encodings to UTF-8.
+#   3. Set PowerShell pipeline encoding so external processes (curl, tar,
+#      gitmap.exe) also receive UTF-8.
+#   4. Disable PSStyle ANSI rendering on PS 7+ so legacy hosts do not echo
+#      raw escape sequences as literal text.
+try {
+    Add-Type -Namespace GitmapInstaller -Name NativeConsole -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("kernel32.dll")]
+public static extern bool SetConsoleOutputCP(uint codePageID);
+[System.Runtime.InteropServices.DllImport("kernel32.dll")]
+public static extern bool SetConsoleCP(uint codePageID);
+'@ -ErrorAction SilentlyContinue
+    [GitmapInstaller.NativeConsole]::SetConsoleOutputCP(65001) | Out-Null
+    [GitmapInstaller.NativeConsole]::SetConsoleCP(65001) | Out-Null
+} catch {}
 try {
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    $OutputEncoding = [System.Text.Encoding]::UTF8
+    [Console]::InputEncoding  = [System.Text.Encoding]::UTF8
+    $OutputEncoding           = [System.Text.Encoding]::UTF8
     if ($PSStyle) { $PSStyle.OutputRendering = 'PlainText' }
 } catch {}
 
