@@ -6,9 +6,7 @@ package cmd
 //   gitmap clone-from   -- manifest-driven re-clone (dry-run + execute)
 //   gitmap clone-now    -- scan-output-driven re-clone (alias: reclone)
 //   gitmap clone-next   -- next-batch clone with version flatten
-//   gitmap clone-multi  -- multi-source clone fan-out
 //   gitmap clone-pick   -- sparse-checkout pick
-//   gitmap clone-audit  -- read-only manifest auditor
 //
 // We assert the three documented scenarios per command:
 //
@@ -125,9 +123,7 @@ func cloneFamilyCmds() []string {
 		"clone-from",
 		"clone-now",
 		"clone-next",
-		"clone-multi",
 		"clone-pick",
-		"clone-audit",
 	}
 }
 
