@@ -10,7 +10,7 @@
 4. **goimports check** — Added a `goimports` step pinned to `golang.org/x/tools/cmd/goimports@v0.24.0`. Reads `LOCAL_PREFIX` dynamically from `go.mod`, runs `-l` for detection then `-d` for diff output, prints copy-pasteable fix command. Positioned between `gofmt` and `go vet`.
 5. **golangci-lint strict gate** — Updated `golangci/golangci-lint-action@v6` step args to include `--issues-exit-code=1`. Pinned version remains `v1.64.8`, timeout `5m`. Working dir `gitmap`.
 6. **Regression-guard semantics audit** — Documented that the "fail only on new issues" contract is split:
-   - **Hard floor (zero-tolerance, ignores baseline):** `lint-regression-guard` job for `unused` + `gosec G115`, via `.github/scripts/check-lint-regressions.sh`.
+   - **Hard floor (zero-tolerance, ignores baseline):** `lint-hard-floor` job (renamed from `lint-regression-guard` on 2026-04-29) for `unused` + `gosec G115`, via `.github/scripts/check-lint-regressions.sh`.
    - **Baseline-diff (fail only on NEW):** `lint-baseline-diff` job (full JSON diff via `.github/scripts/lint-diff.py`) and per-linter sub-steps for `misspell`, `gocritic`, `exhaustive` via `.github/scripts/check-single-linter-diff.sh`.
    - Baseline cache: `golangci-baseline-main-…`, refreshed only on successful pushes to `main`.
 
