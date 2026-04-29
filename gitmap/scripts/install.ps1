@@ -53,6 +53,14 @@ $Repo = "alimtvnetwork/gitmap-v9"
 $BinaryName = "gitmap.exe"
 $InstallerVersion = "1.0.0"
 
+class InstallerFailure : System.Exception {
+    [int]$ExitCode
+
+    InstallerFailure([string]$message, [int]$exitCode) : base($message) {
+        $this.ExitCode = $exitCode
+    }
+}
+
 # ---------------------------------------------------------------------------
 # Versioned repo discovery (spec/01-app/95-installer-script-find-latest-repo.md)
 # ---------------------------------------------------------------------------
@@ -132,7 +140,12 @@ function Invoke-DelegatedFullInstaller([string]$effectiveRepo) {
     if ($KeepData)  { $passArgs.KeepData  = $true }
     if ($PurgeData) { $passArgs.PurgeData = $true }
 
-    & $block @passArgs
+    try {
+        & $block @passArgs
+    }
+    catch {
+        throw
+    }
     return $true
 }
 
@@ -167,6 +180,78 @@ function Write-OK([string]$msg) {
 
 function Write-Err([string]$msg) {
     Write-Host "  $msg" -ForegroundColor Red
+}
+
+function Set-InstallerExitCode([int]$exitCode) {
+    $global:LASTEXITCODE = $exitCode
+    [System.Environment]::ExitCode = $exitCode
+}
+
+function Write-FatalError($record, [int]$exitCode = 1) {
+    Set-InstallerExitCode $exitCode
+    $message = "Unknown PowerShell error"
+    if ($record) {
+        if ($record.Exception -and -not [string]::IsNullOrWhiteSpace($record.Exception.Message)) {
+            $message = $record.Exception.Message
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($record.ToString())) {
+            $message = $record.ToString()
+        }
+    }
+
+    Write-Host ""
+    Write-Err "FATAL: $message"
+
+    if ($record) {
+        if (-not [string]::IsNullOrWhiteSpace($record.ScriptStackTrace)) {
+            Write-Err ""
+            Write-Err "Script stack trace:"
+            foreach ($line in ($record.ScriptStackTrace -split "`r?`n")) {
+                if (-not [string]::IsNullOrWhiteSpace($line)) {
+                    Write-Err "  $line"
+                }
+            }
+        }
+
+        if ($record.InvocationInfo) {
+            $scriptName = $record.InvocationInfo.ScriptName
+            if ([string]::IsNullOrWhiteSpace($scriptName)) {
+                $scriptName = $PSCommandPath
+            }
+
+            Write-Err ""
+            Write-Err "Failure context:"
+            if (-not [string]::IsNullOrWhiteSpace($scriptName)) {
+                Write-Err "  Script: $scriptName"
+            }
+            Write-Err "  Line: $($record.InvocationInfo.ScriptLineNumber)"
+            if (-not [string]::IsNullOrWhiteSpace($record.InvocationInfo.Line)) {
+                Write-Err "  Code: $($record.InvocationInfo.Line.Trim())"
+            }
+        }
+
+        if ($record.CategoryInfo) {
+            Write-Err ""
+            Write-Err "CategoryInfo: $($record.CategoryInfo)"
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($record.FullyQualifiedErrorId)) {
+            Write-Err "FullyQualifiedErrorId: $($record.FullyQualifiedErrorId)"
+        }
+
+        if ($record.Exception) {
+            Write-Err ""
+            Write-Err "Exception:"
+            foreach ($line in ($record.Exception.ToString() -split "`r?`n")) {
+                if (-not [string]::IsNullOrWhiteSpace($line)) {
+                    Write-Err "  $line"
+                }
+            }
+        }
+    }
+
+    Write-Host ""
+    return
 }
 
 # --- Resolve install directory ---
@@ -235,7 +320,7 @@ function Resolve-Version([string]$version) {
         Write-Err "    - Repository name has changed"
         Write-Err ""
         Write-Err "  Try: https://github.com/$Repo/releases"
-        exit 1
+        throw [InstallerFailure]::new("Failed to fetch latest release", 1)
     }
 }
 
@@ -249,7 +334,7 @@ function Stop-Strict([string]$detail) {
     Write-Err "       refusing to fall back per strict-tag contract."
     Write-Err "       See spec/07-generic-release/09-generic-install-script-behavior.md `$3."
     if ($detail) { Write-Err "       Detail: $detail" }
-    exit 1
+    throw [InstallerFailure]::new("Strict version install failed", 1)
 }
 
 # --- Download asset ---
@@ -285,7 +370,7 @@ function Get-Asset([string]$version, [string]$arch) {
             Stop-Strict "download failed: $($_.Exception.Message)"
         }
         Write-Err "Download failed: $_"
-        exit 1
+        throw [InstallerFailure]::new("Download failed", 1)
     }
 
     # Verify checksum
@@ -297,7 +382,7 @@ function Get-Asset([string]$version, [string]$arch) {
             Stop-Strict "asset $assetName not listed in checksums.txt for $version"
         }
         Write-Err "Asset not found in checksums.txt"
-        exit 1
+        throw [InstallerFailure]::new("Asset not found in checksums.txt", 1)
     }
 
     $expectedHash = ($expectedLine -split '\s+')[0]
@@ -311,7 +396,7 @@ function Get-Asset([string]$version, [string]$arch) {
         Write-Err "Checksum mismatch!"
         Write-Err "  Expected: $expectedHash"
         Write-Err "  Got:      $actualHash"
-        exit 1
+        throw [InstallerFailure]::new("Checksum mismatch", 1)
     }
 
     Write-OK "Checksum verified."
@@ -369,7 +454,7 @@ function Install-Binary([string]$zipPath, [string]$installDir) {
                 Write-Err "  $file"
             }
         }
-        exit 1
+        throw [InstallerFailure]::new("Installed archive did not contain $BinaryName", 1)
     }
 
     Move-Item $extracted.FullName $targetPath -Force
@@ -378,7 +463,7 @@ function Install-Binary([string]$zipPath, [string]$installDir) {
 
     if (-not (Test-Path $targetPath)) {
         Write-Err "Install failed: $BinaryName was not written to $installDir"
-        exit 1
+        throw [InstallerFailure]::new("Install failed: $BinaryName was not written to $installDir", 1)
     }
 
     # Cleanup .old
@@ -788,12 +873,7 @@ function Main {
         return @{ InstallDir = $resolvedDir; NewPath = $script:NewPath; Version = $resolvedVersion; PathResult = $pathResult }
     }
     catch {
-        Write-Err "Installation failed: $_"
-        Write-Host ""
-        Write-Err "If this persists, download manually from:"
-        Write-Err "  https://github.com/$Repo/releases/latest"
-        Write-Host ""
-        return $null
+        throw
     }
 }
 
@@ -915,39 +995,45 @@ if ($Uninstall) {
 }
 
 
-$installResult = Main
+try {
+    $installResult = Main
 
-if (-not $installResult) {
-    # Main failed gracefully — error already printed
+    if (-not $installResult) {
+        Set-InstallerExitCode 1
+        return
+    }
+
+    # Set $env:PATH at the TOP-LEVEL script scope (not inside a function)
+    # This ensures the change persists in the caller's session when run via iex
+    $env:PATH = $installResult.NewPath
+
+    # Verify the binary works
+    $binPath = Join-Path $installResult.InstallDir $BinaryName
+    $installedVersion = $installResult.Version
+    if (Test-Path $binPath) {
+        Write-Host ""
+        try {
+            $versionOutput = & $binPath version 2>&1
+            $installedVersion = ($versionOutput | Out-String).Trim()
+            Write-OK "gitmap $installedVersion"
+        }
+        catch {
+            Write-Err "Binary found but failed to run: $_"
+        }
+    }
+    else {
+        Write-Err "Binary not found at $binPath"
+    }
+
+    Write-InstallSummary $installedVersion $binPath $installResult.InstallDir $installResult.PathResult $NoPath.IsPresent
+
+    Invoke-InstallVerification $binPath $installResult.InstallDir $NoPath.IsPresent
+
+    Write-Host ""
+    Write-OK "Done! Run 'gitmap --help' to get started."
+    Write-Host ""
+}
+catch {
+    Write-FatalError $_ 1
     return
 }
-
-# Set $env:PATH at the TOP-LEVEL script scope (not inside a function)
-# This ensures the change persists in the caller's session when run via iex
-$env:PATH = $installResult.NewPath
-
-# Verify the binary works
-$binPath = Join-Path $installResult.InstallDir $BinaryName
-$installedVersion = $installResult.Version
-if (Test-Path $binPath) {
-    Write-Host ""
-    try {
-        $versionOutput = & $binPath version 2>&1
-        $installedVersion = ($versionOutput | Out-String).Trim()
-        Write-OK "gitmap $installedVersion"
-    }
-    catch {
-        Write-Err "Binary found but failed to run: $_"
-    }
-}
-else {
-    Write-Err "Binary not found at $binPath"
-}
-
-Write-InstallSummary $installedVersion $binPath $installResult.InstallDir $installResult.PathResult $NoPath.IsPresent
-
-Invoke-InstallVerification $binPath $installResult.InstallDir $NoPath.IsPresent
-
-Write-Host ""
-Write-OK "Done! Run 'gitmap --help' to get started."
-Write-Host ""
