@@ -132,7 +132,12 @@ function Invoke-DelegatedFullInstaller([string]$effectiveRepo) {
     if ($KeepData)  { $passArgs.KeepData  = $true }
     if ($PurgeData) { $passArgs.PurgeData = $true }
 
-    & $block @passArgs
+    try {
+        & $block @passArgs
+    }
+    catch {
+        Write-FatalError $_ 1
+    }
     return $true
 }
 
@@ -854,12 +859,7 @@ function Main {
         return @{ InstallDir = $resolvedDir; NewPath = $script:NewPath; Version = $resolvedVersion; PathResult = $pathResult }
     }
     catch {
-        Write-Err "Installation failed: $_"
-        Write-Host ""
-        Write-Err "If this persists, download manually from:"
-        Write-Err "  https://github.com/$Repo/releases/latest"
-        Write-Host ""
-        return $null
+        Write-FatalError $_ 1
     }
 }
 
