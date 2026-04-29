@@ -160,6 +160,7 @@ func parseCSVWithSchema(f io.Reader) ([]Row, error) {
 func parseCSVByHeaderName(r io.Reader) ([]model.ScanRecord, error) {
 	cr := csv.NewReader(r)
 	cr.FieldsPerRecord = -1
+	cr.LazyQuotes = true
 	rows, err := cr.ReadAll()
 	if err != nil {
 		return nil, err
