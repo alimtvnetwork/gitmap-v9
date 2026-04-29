@@ -15,10 +15,12 @@ package clonenow
 
 import (
 	"bytes"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/alimtvnetwork/gitmap-v9/gitmap/constants"
