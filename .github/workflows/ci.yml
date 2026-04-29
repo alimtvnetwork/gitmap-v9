@@ -351,7 +351,7 @@ jobs:
           restore-keys: |
             golangci-misspell-baseline-main-
 
-      - name: Misspell diff (hard-gate, full-path only)
+      - name: Misspell diff (baseline-diff, full-path only)
         # Dedicated misspell-only diff. Runs after the hard-floor step
         # so a misspell regression is reported with a guaranteed
         # `path:line:col` annotation and CANNOT be masked by stale
@@ -386,7 +386,7 @@ jobs:
           path: /tmp/lint-misspell-baseline
           key: golangci-misspell-baseline-main-${{ github.sha }}
 
-      # ---- gocritic diff (hard-gate, same contract as misspell) -----
+      # ---- gocritic diff (baseline-diff, same contract as misspell) -----
       - name: Restore gocritic baseline (rolling, single slot)
         id: gocritic-baseline-cache
         if: needs.sha-check.outputs.already-built != 'true'
@@ -397,7 +397,7 @@ jobs:
           restore-keys: |
             golangci-gocritic-baseline-main-
 
-      - name: Gocritic diff (hard-gate, full-path only)
+      - name: Gocritic diff (baseline-diff, full-path only)
         # Same contract as the misspell step: only `gocritic` runs,
         # path-less findings are dropped, and only NEW (vs baseline)
         # issues fail the build. Catches regressions like
@@ -432,7 +432,7 @@ jobs:
           path: /tmp/lint-gocritic-baseline
           key: golangci-gocritic-baseline-main-${{ github.sha }}
 
-      # ---- exhaustive diff (hard-gate, same contract as misspell) ---
+      # ---- exhaustive diff (baseline-diff, same contract as misspell) ---
       - name: Restore exhaustive baseline (rolling, single slot)
         id: exhaustive-baseline-cache
         if: needs.sha-check.outputs.already-built != 'true'
@@ -443,7 +443,7 @@ jobs:
           restore-keys: |
             golangci-exhaustive-baseline-main-
 
-      - name: Exhaustive switch diff (hard-gate, full-path only)
+      - name: Exhaustive switch diff (baseline-diff, full-path only)
         # Catches NEW "missing cases in switch" findings (e.g.
         # `startup.BackendUnspecified` not handled). Pre-existing
         # incomplete switches stay in the baseline; only freshly
