@@ -868,7 +868,7 @@ jobs:
 
   legacy-refs-check:
     # Fails the build if any legacy version string (gitmap-v5, gitmap-v6, # gitmap-legacy-ref-allow
-    # gitmap-v7) leaks back into the repo after the v8 rename. Mirrors # gitmap-legacy-ref-allow
+    # gitmap-v9) leaks back into the repo after the v8 rename. Mirrors # gitmap-legacy-ref-allow
     # the local `gitmap audit-legacy` command but runs without the Go
     # toolchain so it gates EVERY CI run, including remixes that haven't
     # built yet. Lines containing the literal `gitmap-legacy-ref-allow`
