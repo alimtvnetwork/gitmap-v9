@@ -152,9 +152,9 @@ while IFS='|' read -r FILE LINE TEXT; do
     | .[0].Pos.Column // 1
   ' "$CURRENT_OUT")
   if [ "$SEEDING" = "true" ]; then
-    echo "::warning file=${FILE},line=${LINE},col=${COL}::[${LINTER}] ${TEXT} (seeding baseline)"
+    echo "::warning file=${FILE},line=${LINE},col=${COL}::[${LABEL}] ${TEXT} (seeding baseline)"
   else
-    echo "::error file=${FILE},line=${LINE},col=${COL}::[${LINTER}] ${TEXT} (NEW vs baseline)"
+    echo "::error file=${FILE},line=${LINE},col=${COL}::[${LABEL}] ${TEXT} (NEW vs baseline)"
   fi
 done <<EOF
 $NEW_KEYS
@@ -166,5 +166,5 @@ if [ "$SEEDING" = "true" ]; then
 fi
 
 echo "" >&2
-echo "FAIL: $NEW_COUNT new $LINTER finding(s). Fix the issues above." >&2
+echo "FAIL: $NEW_COUNT new $LABEL finding(s). Fix the issues above." >&2
 exit 1
