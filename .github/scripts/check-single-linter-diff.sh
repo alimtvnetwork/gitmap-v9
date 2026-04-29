@@ -35,6 +35,11 @@
 #   $LABEL        — OPTIONAL display label for log/annotation banners
 #                   (defaults to $LINTER; set to e.g. "gosec-G115" when
 #                   TEXT_FILTER scopes a single rule).
+#
+# Exit codes:
+#   0 — no new findings (or seeding mode)
+#   1 — at least one new finding from $LINTER with a full file path
+#   2 — toolchain missing / unrecoverable error / missing required env
 
 set -euo pipefail
 
@@ -42,6 +47,8 @@ LINT_DIR="${1:-gitmap}"
 LINTER="${LINTER:-}"
 CURRENT_OUT="${CURRENT_OUT:-}"
 BASELINE="${BASELINE:-}"
+TEXT_FILTER="${TEXT_FILTER:-}"
+LABEL="${LABEL:-$LINTER}"
 
 if [ -z "$LINTER" ]; then
   echo "ERROR: LINTER env var is required (e.g. LINTER=gocritic)" >&2
