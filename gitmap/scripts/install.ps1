@@ -18,11 +18,21 @@
 .PARAMETER Arch
     Force architecture (amd64, arm64). Default: auto-detect.
 
+.PARAMETER DryRun
+    Resolve the asset URL + filename, run the pre-flight HEAD probe to
+    confirm the release asset exists, print a machine-parseable
+    `dryrun.*=` report, and exit 0 without downloading or installing.
+    Used by CI to validate the install.ps1 / release-pipeline naming
+    contract.
+
 .EXAMPLE
     irm https://raw.githubusercontent.com/alimtvnetwork/gitmap-v9/main/gitmap/scripts/install.ps1 | iex
 
 .EXAMPLE
     & ./install.ps1 -Version v2.48.0
+
+.EXAMPLE
+    & ./install.ps1 -Version v4.1.0 -DryRun -NoDiscovery
 
 .NOTES
     Repository: https://github.com/alimtvnetwork/gitmap-v9
