@@ -77,7 +77,8 @@ try {
         exit 3
     }
 
-    $actual = (& $bin version 2>&1 | Select-Object -First 1).ToString().Trim()
+    $actual = (& $bin version 2>&1 | ForEach-Object { $_.ToString() } | Where-Object { $_ -match '^gitmap v[0-9]' } | Select-Object -First 1)
+    if ($actual) { $actual = $actual.Trim() }
     Write-Host "▶ Actual output: $actual"
 
     $expectedLine = "gitmap v$expected"
