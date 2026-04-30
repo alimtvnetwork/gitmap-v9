@@ -53,6 +53,20 @@ irm https://github.com/alimtvnetwork/gitmap-v9/releases/download/v4.1.0/release-
 curl -fsSL https://github.com/alimtvnetwork/gitmap-v9/releases/download/v4.1.0/release-version-v4.1.0.sh | bash
 ```
 
+#### 🧭 Version matrix — `v4.1.0` install-script URLs
+
+One-line installers and release assets for the pinned **v4.1.0** build across every supported platform. All URLs resolve to the exact release tag — no fallback, no discovery.
+
+| Platform | Shell | Install-script URL | Release binary asset |
+| --- | --- | --- | --- |
+| **Windows** (amd64) | PowerShell | [`release-version-v4.1.0.ps1`](https://github.com/alimtvnetwork/gitmap-v9/releases/download/v4.1.0/release-version-v4.1.0.ps1) | [`gitmap-v4.1.0-windows-amd64.zip`](https://github.com/alimtvnetwork/gitmap-v9/releases/download/v4.1.0/gitmap-v4.1.0-windows-amd64.zip) |
+| **macOS** (arm64) | Bash | [`release-version-v4.1.0.sh`](https://github.com/alimtvnetwork/gitmap-v9/releases/download/v4.1.0/release-version-v4.1.0.sh) | [`gitmap-v4.1.0-darwin-arm64.tar.gz`](https://github.com/alimtvnetwork/gitmap-v9/releases/download/v4.1.0/gitmap-v4.1.0-darwin-arm64.tar.gz) |
+| **macOS** (amd64) | Bash | [`release-version-v4.1.0.sh`](https://github.com/alimtvnetwork/gitmap-v9/releases/download/v4.1.0/release-version-v4.1.0.sh) | [`gitmap-v4.1.0-darwin-amd64.tar.gz`](https://github.com/alimtvnetwork/gitmap-v9/releases/download/v4.1.0/gitmap-v4.1.0-darwin-amd64.tar.gz) |
+| **Linux** (amd64) | Bash | [`release-version-v4.1.0.sh`](https://github.com/alimtvnetwork/gitmap-v9/releases/download/v4.1.0/release-version-v4.1.0.sh) | [`gitmap-v4.1.0-linux-amd64.tar.gz`](https://github.com/alimtvnetwork/gitmap-v9/releases/download/v4.1.0/gitmap-v4.1.0-linux-amd64.tar.gz) |
+| **Linux** (arm64) | Bash | [`release-version-v4.1.0.sh`](https://github.com/alimtvnetwork/gitmap-v9/releases/download/v4.1.0/release-version-v4.1.0.sh) | [`gitmap-v4.1.0-linux-arm64.tar.gz`](https://github.com/alimtvnetwork/gitmap-v9/releases/download/v4.1.0/gitmap-v4.1.0-linux-arm64.tar.gz) |
+
+> **Release page:** [github.com/alimtvnetwork/gitmap-v9/releases/tag/v4.1.0](https://github.com/alimtvnetwork/gitmap-v9/releases/tag/v4.1.0) · **Asset naming contract:** `gitmap-<version>-<os>-<arch>.<ext>` (`.zip` on Windows, `.tar.gz` elsewhere) — verified by the installer pre-flight HEAD probe.
+
 ### 🎯 Install — Quick (pick your install drive)
 
 Use this **only** when you want to choose a specific drive or folder (e.g. install to `D:\` instead of the default location). It prompts for the install drive/folder, then delegates to the canonical installer above.
