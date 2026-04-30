@@ -4,11 +4,15 @@ package cmd
 // scripts/fix-repo/Rewrite-Engine.ps1: replace literal `{base}-v{N}`
 // with `{base}-v{current}` for every N in targets, guarded by a
 // negative-lookahead so `-v1` does not match inside `-v10`.
+//
+// Go's RE2 has no native `(?!...)` so the guard is implemented as a
+// hand-rolled scan that walks each occurrence of the literal token
+// and inspects the next byte before substituting.
 
 import (
 	"os"
-	"regexp"
 	"strconv"
+	"strings"
 )
 
 // rewriteFixRepoFile reads fullPath, applies every target rewrite,
@@ -47,31 +51,60 @@ func applyAllTargets(text, base string, current int, targets []int) (string, int
 	return text, total
 }
 
-// applyOneTarget replaces every literal `{base}-vN` (not followed by
-// a digit) with `{base}-v{current}` and returns the new text + count.
+// applyOneTarget walks every literal `{base}-vN` occurrence and
+// substitutes it with `{base}-v{current}` when the next byte is not
+// an ASCII digit (so `-v1` does not match inside `-v10`).
 func applyOneTarget(text, base string, n, current int) (string, int) {
-	re := buildRewriteRegex(base, n)
-	matches := re.FindAllStringIndex(text, -1)
-	if len(matches) == 0 {
+	token := base + "-v" + strconv.Itoa(n)
+	replacement := base + "-v" + strconv.Itoa(current)
+	if !strings.Contains(text, token) {
 		return text, 0
 	}
-	replacement := base + "-v" + strconv.Itoa(current)
 
-	return re.ReplaceAllString(text, replacement), len(matches)
+	return rewriteToken(text, token, replacement)
 }
 
-// buildRewriteRegex compiles the literal-token + negative-lookahead
-// pattern. Go's RE2 has no native `(?!...)` so we approximate with
-// `(?:$|[^0-9])` and consume the trailing char via a capture-group
-// fix-up, but for this token shape a simpler trick works: anchor on
-// the literal, then check the next byte by hand. Implementation
-// uses regexp with a non-digit / end-of-text trailing assertion.
-func buildRewriteRegex(base string, n int) *regexp.Regexp {
-	literal := regexp.QuoteMeta(base + "-v" + strconv.Itoa(n))
-	// The trailing `\b` boundary is insufficient (digits ARE word chars)
-	// so we use a non-digit-or-end alternative and consume the trailing
-	// char in the replacement loop via a custom approach below.
-	pattern := literal + `(?:[^0-9]|$)`
+// rewriteToken is the inner scan loop. Extracted so applyOneTarget
+// stays well under the 15-line cap and the loop can be unit-tested
+// directly without going through the file-IO layer.
+func rewriteToken(text, token, replacement string) (string, int) {
+	var b strings.Builder
+	count := 0
+	tlen := len(token)
+	for {
+		idx := strings.Index(text, token)
+		if idx < 0 {
+			b.WriteString(text)
+			break
+		}
+		b.WriteString(text[:idx])
+		count += writeOneTokenHit(&b, text, idx, tlen, token, replacement)
+		text = text[idx+tlen:]
+	}
 
-	return regexp.MustCompile(pattern)
+	return b.String(), count
+}
+
+// writeOneTokenHit emits either the replacement (when the byte after
+// the token is not an ASCII digit) or the literal token unchanged
+// (when it IS a digit, i.e. we matched a prefix of -v10/-v123/etc).
+// Returns 1 on substitution, 0 on guarded skip.
+func writeOneTokenHit(b *strings.Builder, text string, idx, tlen int,
+	token, replacement string,
+) int {
+	nextOff := idx + tlen
+	if nextOff < len(text) && isASCIIDigit(text[nextOff]) {
+		b.WriteString(token)
+
+		return 0
+	}
+	b.WriteString(replacement)
+
+	return 1
+}
+
+// isASCIIDigit returns true when c is in '0'..'9'. Inlined helper
+// keeps the hot-path readable without pulling in unicode tables.
+func isASCIIDigit(c byte) bool {
+	return c >= '0' && c <= '9'
 }
