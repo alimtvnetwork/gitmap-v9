@@ -1,5 +1,11 @@
 # Changelog
 
+## v4.1.0 — (2026-04-30) — Major version bump rolling up fix-repo command + installer/lint fixes
+
+- Promotes the `gitmap fix-repo` / `fr` Go-native rewriter, installer warning
+  fix (`%w`-wrapped errors in `downloaderconfig.LoadFile`), and `nolintlint`
+  cleanup into the v4 line.
+
 ## v3.181.0 — (2026-04-30) — `gitmap fix-repo` / `fr`: Go-native rewriter of `{base}-vN` tokens
 
 - New command `gitmap fix-repo` (alias `fr`) replaces the `fix-repo.ps1` script
